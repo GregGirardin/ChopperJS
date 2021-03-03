@@ -1,6 +1,7 @@
 import { c } from './constants.js';
 import { SkyGround, MountainImg, HillImg, Cloud, Rock, Grass, Tree, Base } from './background.js';
 import { Point, projection } from './utils.js';
+import { Helicopter } from './helicopter.js';
 
 /*
 import * as ai from './enemyAI.js';
@@ -151,7 +152,7 @@ class gameEngine
       this.bg_objects.push( new Tree( this, randInt( 20, c.MAX_WORLD_X ), 0, z ) );
 
     // Base - active, update replenishes resources
-    this.objects.push( new Base( this, 0, 0, 2, "Base" ) )
+    this.objects.push( new Base( this, 0, 0, 2, "Base" ) );
     /*
     // Create the Chopper
     this.chopper = new Helicopter( this, 0, 0, 1 )
@@ -173,6 +174,7 @@ class gameEngine
 
   addObject( newobj )
   {
+    this.objects.push( newobj );
   }
 
   update( milliSeconds )
