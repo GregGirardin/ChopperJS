@@ -7,7 +7,6 @@ function randInt( min, max )
 }
 
 // background stuff
-
 export class SkyGround
 {
   static img;
@@ -130,11 +129,11 @@ export class Cloud
     }
   }
 
-  update( )
+  update( delta ) 
   {
-    this.p.x -= 1;
+    this.p.x -= 2/delta;
     // tbd. Check for wrap
-    return True;
+    return true;
   }
 
   draw( p )
@@ -255,6 +254,11 @@ export class Base
     }
   }
 
+  update( )
+  {
+    return true;
+  }
+
   draw( p )
   {
     this.e.ctx.drawImage( Base.img,
@@ -291,11 +295,12 @@ class CityBuilding
 
   static numBuildings = CityBuilding.imgInfo.length;
 
-  constructor( e, xPos, b, label=None )
+  constructor( e, xPos, buildIx, label=undefined )
   {
+    this.e = e;
     this.p = new Point( xPos, 0, 2 );
     this.label = label;
-    this.b = b;
+    this.buildIx = buildIx;
     this.oType = c.OBJECT_TYPE_BUILDING;
     this.si = c.SI_BUILDING;
     this.colRect = undefined; // tbd
@@ -330,29 +335,29 @@ class CityBuilding
     if( this.si < 0.0 )
     {
       e.qMessage( c.MSG_BUILDING_DESTROYED );
-      return False;
+      return false;
     }
-    return True
+    return true
   }
 
   draw( p )
   {
-    this.e.ctx.drawImage( CityBuildings.img,
+    this.e.ctx.drawImage( CityBuilding.img,
                           this.ix, this.iy, this.w, this.h, // source rectangle
                           p.x - this.w * this.imgFactor / 2, p.y - this.h * this.imgFactor, // x, y
                           this.w * this.imgFactor, this.h * this.imgFactor ); // w, h
   }
 }
 
-function buildCity( e, x, bCount, label=None )
+export function buildCity( e, x, bCount, label=undefined )
 {
-  var buildIx;
+  let buildIx, b, building;
 
   for( b=0;b < bCount;b++ )
   {
-    buildIx = random.randint( 0, CityBuildings.numBuildings - 1 );
-    building = new CityBuildings( e, x, buildIx, label=label );
-    e.objects.append( building );
+    buildIx = randInt( 0, CityBuilding.numBuildings - 1 );
+    building = new CityBuilding( e, x, buildIx, label=label );
+    e.addObject( building );
     x += building.iw * 1.5;
   }
 }
@@ -397,8 +402,9 @@ class EBuilding // from miscBuildings.gif
 
   static numBuildings = EBuilding.imgInfo.length;
 
-  constructor( e, xPos, buildIx, label=None )
+  constructor( e, xPos, buildIx, label=undefined )
   {
+    this.e = e;
     this.oType = c.OBJECT_TYPE_E_BUILDING;
     this.p = new Point( xPos, 0, 3 );
     this.colRect = undefined; // tbd
@@ -439,9 +445,9 @@ class EBuilding // from miscBuildings.gif
     if( this.si < 0.0 )
     {
       e.qMessage( c.MSG_E_BUILDING_DESTROYED, this );
-      return False;
+      return false;
     }
-    return True;
+    return true;
   }
 
   draw( p )
@@ -453,15 +459,15 @@ class EBuilding // from miscBuildings.gif
   }
 }
 
-function buildEBase( e, x, bCount, label=None )
+export function buildEBase( e, x, bCount, label=undefined )
 {
-  var buildIx, buildObj;
+  var b, buildIx, buildObj;
 
   for( b = 0;b < bCount;b++ )
   {
     buildIx = randInt( 0, EBuilding.numBuildings - 1 );
     buildObj = new EBuilding( e, x, buildIx, label="Enemy" )
-    e.objects.push( buildObj  );
+    e.addObject( buildObj  );
     x += buildObj.iw * 1.5; // adjust pixels to world coors.
   }
 }

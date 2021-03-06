@@ -1,5 +1,5 @@
 import { c } from './constants.js';
-import { SkyGround, MountainImg, HillImg, Cloud, Rock, Grass, Tree, Base } from './background.js';
+import { SkyGround, MountainImg, HillImg, Cloud, Rock, Grass, Tree, Base, buildCity, buildEBase } from './background.js';
 import { Point, projection } from './utils.js';
 import { Helicopter } from './helicopter.js';
 
@@ -42,7 +42,6 @@ class gameEngine
     this.newGameTimer = 0;
     this.currentCamOff = -20; // Start from the left initially to show the City
     this.showDirections = true;
-
     this.newGame();
   }
 
@@ -97,7 +96,7 @@ class gameEngine
     }
   }
 
-  modScore( points )
+  modScore( points ) 
   {
     this.score += points;
     if( this.score < 0 )
@@ -153,23 +152,20 @@ class gameEngine
 
     // Base - active, update replenishes resources
     this.objects.push( new Base( this, 0, 0, 2, "Base" ) );
-    /*
+
     // Create the Chopper
-    this.chopper = new Helicopter( this, 0, 0, 1 )
-    this.objects.push( this.chopper )
+    this.chopper = new Helicopter( this, 0, 0, 1 );
+    this.objects.push( this.chopper );
 
-    buildCity( this, MIN_WORLD_X, NUM_CITY_BUILDINGS )
-    buildEBase( this, c.MAX_WORLD_X / 2, c.NUM_E_BASE_BUILDINGS + this.level * 2 )
+    buildCity( this, c.MIN_WORLD_X, c.NUM_CITY_BUILDINGS );
+    buildEBase( this, c.MAX_WORLD_X / 2, c.NUM_E_BASE_BUILDINGS + this.level * 2 );
 
-    this.objects.push( new GameManager( this ) )
+  //  this.objects.push( new GameManager( this ) )
+   // Sort objects by decreasing Z so closer are drawn on top
 
-    // Sort objects by decreasing Z so closer are drawn on top
-    def increaseZ( o ):
-      return -o.p.z
-
-    this.bg_objects.sort( key=increaseZ )
-    this.objects.sort( key=increaseZ )
-    */
+    this.bg_objects.sort( function( a, b ){ return b.p.z - a.p.z } );
+    this.objects.sort( function( a, b ){ return b.p.z - a.p.z } ) ;
+    
   }
 
   addObject( newobj )
@@ -177,8 +173,12 @@ class gameEngine
     this.objects.push( newobj );
   }
 
-  update( milliSeconds )
+  update( deltaMs )
   {
+    var index;
+
+    for( index=0;index < this.objects.length;index++ )
+      this.objects[ index ].update( deltaMs );
   }
 
   draw()
@@ -244,10 +244,13 @@ class gameEngine
 }
 
 let gEngine;
-let frameCount = 20; // temp, just run for a couple seconds.
+let frameCount = 1000; // temp, just run for a couple seconds.
+let lastTimestamp = 0;
 function gameLoop( timeStamp )
 {
-  gEngine.loop( timeStamp );
+  var delta = timeStamp - lastTimestamp;
+  lastTimestamp = timeStamp;
+  gEngine.loop( delta );
   if( frameCount-- > 0 )
     window.requestAnimationFrame( gameLoop );
 }

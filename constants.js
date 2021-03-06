@@ -4,6 +4,36 @@ export const c =
 {
   NUM_CHOPPERS : 3,
 
+  // Chopper body angle
+  ANGLE_0   : 0, // level
+  ANGLE_U5  : 1, // Up 5 degrees for slowing down
+  ANGLE_D5  : 2, // Down 5
+  ANGLE_D10 : 3, // Down 10
+
+  WEAPON_NONE : 0,
+  WEAPON_SMALL_MISSILE : 1,
+  WEAPON_LARGE_MISSILE : 2,
+  WEAPON_BOMB : 3,
+  WEAPON_BULLET : 4,
+
+  MAX_ALTITUDE : 100,
+
+  // What's the desired X velocity? We have to accelerate to it.
+  TGT_VEL_STOP       :  0, // facing fwd
+  TGT_VEL_LEFT_STOP  : -1, // stopped facing left
+  TGT_VEL_LEFT_SLOW  : -2,
+  TGT_VEL_LEFT_FAST  : -3,
+  TGT_VEL_RIGHT_STOP :  1,
+  TGT_VEL_RIGHT_SLOW :  2,
+  TGT_VEL_RIGHT_FAST :  3,
+
+  // What's the desired Y velocity
+  TGT_VEL_UP_SLOW : 1,
+  TGT_VEL_UP_FAST : 2,
+  TGT_VEL_DN_SLOW : -1,
+  TGT_VEL_DN_FAST : -2,
+  ////
+
   SCREEN_WIDTH : 1600,
   SCREEN_HEIGHT : 800,
   SCREEN_PAD : 500,
@@ -141,13 +171,21 @@ export const c =
 
   MSG_COLLISION_DET : 20, // Collision detected
 
-  MSG_BUILDING_DESTROYED : 30, // One of our buildings destroyed
-  MSG_E_BUILDING_DESTROYED : 31, // enemy base building destroyed
-  MSG_CHOPPER_DESTROYED : 33,
-  MSG_SPAWNING_COMPLETE : 34, // all enemies for this level have spawned
+  MSG_BUILDING_DESTROYED    : 30, // One of our buildings destroyed
+  MSG_E_BUILDING_DESTROYED  : 31, // enemy base building destroyed
+  MSG_CHOPPER_DESTROYED     : 33,
+  MSG_SPAWNING_COMPLETE     : 34, // all enemies for this level have spawned
   MSG_ENEMY_LEFT_BATTLEFIELD : 35, // destroyed or left due to mission complete
-  MSG_MISSION_COMPLETE : 36,
-  MSG_CHOPPER_AT_BASE : 40,
-  MSG_SOLDIERS_TO_CITY : 41,
-  MSG_RESOURCES_AVAIL : 42, // param A list of Resources
+  MSG_MISSION_COMPLETE      : 36,
+  MSG_CHOPPER_AT_BASE       : 40,
+  MSG_SOLDIERS_TO_CITY      : 41,
+  MSG_RESOURCES_AVAIL       : 42, // param A list of Resources
+
+// Tank operational states
+TANK_STATE_MOVE_TO_ATK  : 0,  // go to building
+TANK_STATE_ATK_CHOPPER  : 1,  // Helo present. Engage
+TANK_STATE_SHELLING     : 2,  // in position
+TANK_STATE_RELOAD       : 3,  // out of weapons, go back to reload.
+TANK_STATE_GUARD        : 4   // Wait here until the chopper comes local
+
 };
