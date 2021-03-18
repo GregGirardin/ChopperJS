@@ -4,12 +4,6 @@ export const c =
 {
   NUM_CHOPPERS : 3,
 
-  // Chopper body angle
-  ANGLE_0   : 0, // level
-  ANGLE_U5  : 1, // Up 5 degrees for slowing down
-  ANGLE_D5  : 2, // Down 5
-  ANGLE_D10 : 3, // Down 10
-
   WEAPON_NONE : 0,
   WEAPON_SMALL_MISSILE : 1,
   WEAPON_LARGE_MISSILE : 2,
@@ -18,21 +12,9 @@ export const c =
 
   MAX_ALTITUDE : 100,
 
-  // What's the desired X velocity? We have to accelerate to it.
-  TGT_VEL_STOP       :  0, // facing fwd
-  TGT_VEL_LEFT_STOP  : -1, // stopped facing left
-  TGT_VEL_LEFT_SLOW  : -2,
-  TGT_VEL_LEFT_FAST  : -3,
-  TGT_VEL_RIGHT_STOP :  1,
-  TGT_VEL_RIGHT_SLOW :  2,
-  TGT_VEL_RIGHT_FAST :  3,
-
-  // What's the desired Y velocity
-  TGT_VEL_UP_SLOW : 1,
-  TGT_VEL_UP_FAST : 2,
-  TGT_VEL_DN_SLOW : -1,
-  TGT_VEL_DN_FAST : -2,
-  ////
+  MAX_X_VEL : 3, // 0 means fwd, 1 means right not moving, -1 means left not moving
+  MAX_Y_VEL : 4,
+  MIN_Y_VEL : -1,
 
   SCREEN_WIDTH : 1600,
   SCREEN_HEIGHT : 800,
@@ -53,14 +35,15 @@ export const c =
   // World geometry
   HORIZON_DISTANCE : 10000,
 
-  CAM_FOV_X   : 45.0/360.0 * 6.28,
-  CAM_FOV_Y   : 30.0/360.0 * 6.28,
+  CAM_FOV_X   : 45.0/360.0 * 6.2818,
+  CAM_FOV_Y   : 30.0/360.0 * 6.2818,
   CAM_Z       : 100, // Distance behind projection plane, NOTE: should be negative in theory.
 
-  DISPLAY_CONTROL_TIME : 30, // How may frames to display the control "stick" position after movement
+  DISPLAY_CONTROL_TIME : 1000, // How many ms to display the control "stick" position after movement
 
-  BULLET_LIFETIME   : 100,
-  SHOW_SI_COUNT     : 50, // How long to show an enemies structural integrity in "loops"
+  BULLET_WAIT_TIME  : 200, // ms until we can fire again.
+  BULLET_LIFETIME   : 2000, // ms.
+  SHOW_SI_COUNT     : 2000, // How long to show an enemies structural integrity in ms
 
   DIRECTION_LEFT    : 0,
   DIRECTION_RIGHT   : 1,
@@ -126,21 +109,21 @@ export const c =
   SI_E_BUILDING : 50.0,
 
   // points
-  POINTS_JEEP : 5,
-  POINTS_TRUCK : 10,
-  POINTS_TRANSPORT : 15,
-  POINTS_TANK : 15,
-  POINTS_BOMBER : 20,
-  POINTS_FIGHTER : 50,
+  POINTS_JEEP       : 5,
+  POINTS_TRUCK      : 10,
+  POINTS_TRANSPORT  : 15,
+  POINTS_TANK       : 15,
+  POINTS_BOMBER     : 20,
+  POINTS_FIGHTER    : 50,
   POINTS_E_BUILDING : 10, // enemy base building.
-  POINTS_E_BASE : 50,
-  POINTS_BUILDING : 15, // city buildings not bombed after level complete
+  POINTS_E_BASE     : 50,
+  POINTS_BUILDING   : 15, // city buildings not bombed after level complete
 
   // Full weapon payload.
-  MAX_L_MISSILES  : 4.0,
-  MAX_S_MISSILES  : 20.0,
+  MAX_L_MISSILES  :   4.0,
+  MAX_S_MISSILES  :  20.0,
   MAX_BULLETS     : 100.0,
-  MAX_BOMBS       : 4.0,
+  MAX_BOMBS       :   4.0,
 
   // Resources
   RESOURCE_FIRST : 0,
@@ -156,36 +139,23 @@ export const c =
 
   //  Messages to objects
   // From UI to chopper
-  MSG_ACCEL_L           : 0,
-  MSG_ACCEL_R           : 1,
-  MSG_ACCEL_U           : 2,
-  MSG_ACCEL_D           : 3,
-  MSG_WEAPON_MISSILE_S  : 4,
-  MSG_WEAPON_MISSILE_L  : 5,
-  MSG_WEAPON_BOMB       : 6,
-  MSG_WEAPON_BULLET     : 7,
-  MSG_GUN_UP            : 10,
-  MSG_GUN_DOWN          : 11,
+  MSG_UI            : 0,// a UI messages to main Q sent to chopper for handling.
+  MSG_COLLISION_DET : 1, // Collision detected
 
-  MSG_UI : 12, // a UI messages to main Q sent to chopper for handling.
+  MSG_BUILDING_DESTROYED    : 10, // One of our buildings destroyed
+  MSG_E_BUILDING_DESTROYED  : 11, // enemy base building destroyed
+  MSG_CHOPPER_DESTROYED     : 13,
+  MSG_SPAWNING_COMPLETE     : 14, // all enemies for this level have spawned
+  MSG_ENEMY_LEFT_BATTLEFIELD : 15, // destroyed or left due to mission complete
+  MSG_MISSION_COMPLETE      : 16,
+  MSG_CHOPPER_AT_BASE       : 20,
+  MSG_SOLDIERS_TO_CITY      : 21,
+  MSG_RESOURCES_AVAIL       : 22, // param A list of Resources
 
-  MSG_COLLISION_DET : 20, // Collision detected
-
-  MSG_BUILDING_DESTROYED    : 30, // One of our buildings destroyed
-  MSG_E_BUILDING_DESTROYED  : 31, // enemy base building destroyed
-  MSG_CHOPPER_DESTROYED     : 33,
-  MSG_SPAWNING_COMPLETE     : 34, // all enemies for this level have spawned
-  MSG_ENEMY_LEFT_BATTLEFIELD : 35, // destroyed or left due to mission complete
-  MSG_MISSION_COMPLETE      : 36,
-  MSG_CHOPPER_AT_BASE       : 40,
-  MSG_SOLDIERS_TO_CITY      : 41,
-  MSG_RESOURCES_AVAIL       : 42, // param A list of Resources
-
-// Tank operational states
-TANK_STATE_MOVE_TO_ATK  : 0,  // go to building
-TANK_STATE_ATK_CHOPPER  : 1,  // Helo present. Engage
-TANK_STATE_SHELLING     : 2,  // in position
-TANK_STATE_RELOAD       : 3,  // out of weapons, go back to reload.
-TANK_STATE_GUARD        : 4   // Wait here until the chopper comes local
-
+  // Tank operational states
+  TANK_STATE_MOVE_TO_ATK  : 0,  // go to building
+  TANK_STATE_ATK_CHOPPER  : 1,  // Helo present. Engage
+  TANK_STATE_SHELLING     : 2,  // in position
+  TANK_STATE_RELOAD       : 3,  // out of weapons, go back to reload.
+  TANK_STATE_GUARD        : 4   // Wait here until the chopper comes local
 };

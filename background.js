@@ -471,3 +471,49 @@ export function buildEBase( e, x, bCount, label=undefined )
     x += buildObj.iw * 1.5; // adjust pixels to world coors.
   }
 }
+
+export class Rectangle
+{
+  constructor( e, p, v, w=200, h=100 )
+  {
+    this.e = e;
+    this.p = p;
+    this.v = v; // the vertex we wish to rotate around. (0,0) is the center
+    this.oType = c.OBJECT_TYPE_NONE;
+    this.imgFactor = 1;
+    this.width = w;
+    this.height = h;
+    this.angle = 0;
+  }
+
+  update( tstamp )
+  {
+    //this.angle += tstamp / 200;
+    //this.v.y += .2;
+    //this.p.x += .2;
+  }
+
+  draw( p )
+  {
+
+    this.e.ctx.strokeStyle = 'red';
+    this.e.ctx.translate( p.x + this.v.x, p.y - this.v.y );
+    this.e.ctx.rotate( this.angle );
+
+    this.e.ctx.beginPath();
+    this.e.ctx.rect( -this.width/2 - this.v.x, -this.height/2 + this.v.y,
+                      this.width, this.height );
+    this.e.ctx.stroke();
+
+    // draw vertex that we want to rotate around, 0,0 is the center of the object.
+    this.e.ctx.beginPath();
+    this.e.ctx.arc( 0, 0, 5, 0, 2 * Math.PI );
+    this.e.ctx.fillStyle = '#000000';
+    this.e.ctx.fill();
+    this.e.ctx.stroke();
+
+    // Reset transformation matrix
+    this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
+  }
+
+}

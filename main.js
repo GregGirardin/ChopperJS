@@ -1,5 +1,5 @@
 import { c } from './constants.js';
-import { SkyGround, MountainImg, HillImg, Cloud, Rock, Grass, Tree, Base, buildCity, buildEBase } from './background.js';
+import { SkyGround, MountainImg, HillImg, Cloud, Rock, Grass, Tree, Base, buildCity, buildEBase, Rectangle } from './background.js';
 import { Point, projection } from './utils.js';
 import { Helicopter } from './helicopter.js';
 
@@ -66,7 +66,7 @@ class gameEngine
     switch( m )
     {
       case c.MSG_UI: // currently all UI messages are for the chopper.
-        //this.chopper.processMessage( this, param );
+        this.chopper.processMessage( c.MSG_UI, param );
         break;
 
       case c.MSG_BUILDING_DESTROYED:
@@ -79,7 +79,6 @@ class gameEngine
         break;
 
       case c.MSG_CHOPPER_DESTROYED:
-
         break;
 
       case c.MSG_SPAWNING_COMPLETE:
@@ -122,6 +121,8 @@ class gameEngine
     // Two lists to speed up collision detection and other interactions of objects that can interact.
     // We call update() and check for collisions for objects[]
 
+    //this.objects.push( new Rectangle( this, new Point( 0, 0, 10), new Point( 50, 0) ) );
+
     // Sky and ground
     this.bg_objects.push( new SkyGround( this ) );
 
@@ -130,7 +131,6 @@ class gameEngine
     this.bg_objects.push( new HillImg( this, 200, 0, c.HORIZON_DISTANCE / 4 ) );
     
     // Clouds.. clouds move so they're active.
-    
     for( z = 1;z < 10;z++ )
       this.objects.push( new Cloud( this,
                                     randInt( c.MIN_WORLD_X - 1000, c.MAX_WORLD_X * 2 ),
@@ -151,7 +151,7 @@ class gameEngine
       this.bg_objects.push( new Tree( this, randInt( 20, c.MAX_WORLD_X ), 0, z ) );
 
     // Base - active, update replenishes resources
-    this.objects.push( new Base( this, 0, 0, 2, "Base" ) );
+    //this.objects.push( new Base( this, 0, 0, 2, "Base" ) );
 
     // Create the Chopper
     this.chopper = new Helicopter( this, 0, 0, 1 );
@@ -161,8 +161,8 @@ class gameEngine
     buildEBase( this, c.MAX_WORLD_X / 2, c.NUM_E_BASE_BUILDINGS + this.level * 2 );
 
   //  this.objects.push( new GameManager( this ) )
-   // Sort objects by decreasing Z so closer are drawn on top
 
+   // Sort objects by decreasing Z so closer are drawn on top
     this.bg_objects.sort( function( a, b ){ return b.p.z - a.p.z } );
     this.objects.sort( function( a, b ){ return b.p.z - a.p.z } ) ;
     
@@ -251,13 +251,21 @@ function gameLoop( timeStamp )
   var delta = timeStamp - lastTimestamp;
   lastTimestamp = timeStamp;
   gEngine.loop( delta );
-  if( frameCount-- > 0 )
+  // if( frameCount-- > 0 )
     window.requestAnimationFrame( gameLoop );
+}
+
+function keyDownHandler( e )
+{
+  gEngine.processMessage( c.MSG_UI, e );
 }
 
 function gameInit()
 {
   gEngine = new gameEngine();
+
+  document.addEventListener( "keydown", keyDownHandler, false );
+  // document.addEventListener( "keyup", keyUpHandler, false );
 
   window.requestAnimationFrame( gameLoop );
 }

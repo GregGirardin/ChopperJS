@@ -150,9 +150,8 @@ export function vectorDiff( f, t )
   return new Vector( m, d );
 }
 
-//Given a Camera at c and a point at p, compute the screen coordinates
+//Given a Camera at Point cam and a point at p, compute the screen coordinates
 //See projection.jpg
-
 
 export function projection( cam, p )
 {
