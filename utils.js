@@ -190,6 +190,7 @@ export function projection( cam, p )
 
 export function collisionCheck( e, obj1, obj2 )
 {
+  return false;
 }
 
 export function displayColRect( e, o ) // Display the projection of the collision rectangle for debug.

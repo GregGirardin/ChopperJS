@@ -1,6 +1,6 @@
 import { c } from './constants.js';
 import { SkyGround, MountainImg, HillImg, Cloud, Rock, Grass, Tree, Base, buildCity, buildEBase, Rectangle } from './background.js';
-import { Point, projection } from './utils.js';
+import { Point, projection, collisionCheck } from './utils.js';
 import { Helicopter } from './helicopter.js';
 
 /*
@@ -69,29 +69,14 @@ class gameEngine
         this.chopper.processMessage( c.MSG_UI, param );
         break;
 
-      case c.MSG_BUILDING_DESTROYED:
-        break;
-
-      case c.MSG_E_BUILDING_DESTROYED:
-        break;
-
-      case c.MSG_ENEMY_LEFT_BATTLEFIELD:
-        break;
-
-      case c.MSG_CHOPPER_DESTROYED:
-        break;
-
-      case c.MSG_SPAWNING_COMPLETE:
-        break;
-
-      case c.MSG_SOLDIERS_TO_CITY:
-        break;
-
-      case c.MSG_MISSION_COMPLETE:
-        break;
-
-      case c.MSG_CHOPPER_AT_BASE:
-        break;
+      case c.MSG_BUILDING_DESTROYED: break;
+      case c.MSG_E_BUILDING_DESTROYED: break;
+      case c.MSG_ENEMY_LEFT_BATTLEFIELD: break;
+      case c.MSG_CHOPPER_DESTROYED: break;
+      case c.MSG_SPAWNING_COMPLETE: break;
+      case c.MSG_SOLDIERS_TO_CITY: break;
+      case c.MSG_MISSION_COMPLETE: break;
+      case c.MSG_CHOPPER_AT_BASE: break;
     }
   }
 
@@ -150,8 +135,8 @@ class gameEngine
     for( z = 40;z < 500;z += 20 )
       this.bg_objects.push( new Tree( this, randInt( 20, c.MAX_WORLD_X ), 0, z ) );
 
-    // Base - active, update replenishes resources
-    //this.objects.push( new Base( this, 0, 0, 2, "Base" ) );
+    // Base - active, update nishes resources
+    this.objects.push( new Base( this, 0, 0, 2, "Base" ) );
 
     // Create the Chopper
     this.chopper = new Helicopter( this, 0, 0, 1 );
@@ -175,10 +160,58 @@ class gameEngine
 
   update( deltaMs )
   {
-    var index;
+    var index1, index2;
 
-    for( index=0;index < this.objects.length;index++ )
-      this.objects[ index ].update( deltaMs );
+    // new game timer
+
+    // Collision detection
+    for( index1=0;index1 < this.objects.length - 1;index1++ )
+      for( index2=index1;index2 < this.objects.length;index2++ )
+      {
+        let obj1 = this.objects[ index1 ];
+        let obj2 = this.objects[ index2 ];
+        if( collisionCheck( this, obj1, obj2 ) )
+        {
+          obj1.processMessage( this, c.MSG_COLLISION_DET, obj2 );
+          obj2.processMessage( this, c.MSG_COLLISION_DET, obj1 );
+        }
+      }
+
+    for( index1=0;index1 < this.objects.length;index1++ )
+      if( this.objects[ index1 ].update( deltaMs ) == false )
+      {
+        this.objects.splice( index1, 1 );
+        index1--;
+      }
+
+    // move the camera
+    var tgtCamXOff = 0;
+    switch( this.chopper.chopperDir )
+    {
+      case c.DIRECTION_FORWARD:
+        tgtCamXOff = 0; break;
+      case c.DIRECTION_LEFT:
+        tgtCamXOff = -20; break;
+      case c.DIRECTION_RIGHT:
+        tgtCamXOff = 20; break;
+    }
+    if( Math.abs( this.currentCamOff - tgtCamXOff ) < 1 )
+    {
+      this.currentCamOff = tgtCamXOff;
+      this.cameraOnHelo = true;
+    }
+    else if( this.currentCamOff < tgtCamXOff )
+      this.currentCamOff += .5;
+    else if( this.currentCamOff > tgtCamXOff )
+      this.currentCamOff -= .5;
+
+    this.camera.x = this.chopper.p.x + this.currentCamOff;
+    if( this.camera.x < c.MIN_WORLD_X )
+      this.camera.x = c.MIN_WORLD_X;
+    else if( this.camera.x > c.MAX_WORLD_X )
+      this.camera.x = c.MAX_WORLD_X;
+
+    this.camera.y = this.chopper.p.y > 40 ? this.chopper.p.y - 20 : 20;
   }
 
   draw()

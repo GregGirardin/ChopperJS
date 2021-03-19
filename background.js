@@ -263,7 +263,7 @@ export class Base
   {
     this.e.ctx.drawImage( Base.img,
                           p.x - Base.img.width * Base.imgFactor / 2,
-                          p.y - Base.img.height * Base.imgFactor,
+                          p.y - Base.img.height * Base.imgFactor + 50,
                           Base.img.width * Base.imgFactor,
                           Base.img.height * Base.imgFactor );
   }
@@ -304,13 +304,14 @@ class CityBuilding
     this.oType = c.OBJECT_TYPE_BUILDING;
     this.si = c.SI_BUILDING;
     this.colRect = undefined; // tbd
-    this.imgFactor = 1.0;
+    this.imgFactor = 1.5;
 
-    const { x, y, w, h } = CityBuilding.imgInfo[ this.buildIx ];
-    this.ix *= x; 
-    this.iy *= y;
-    this.iw *= w;
-    this.ih *= h;
+    this.ix = CityBuilding.imgInfo[ this.buildIx ][ 0 ];
+    this.iy = CityBuilding.imgInfo[ this.buildIx ][ 1 ];
+    this.iw = CityBuilding.imgInfo[ this.buildIx ][ 2 ];
+    this.ih = CityBuilding.imgInfo[ this.buildIx ][ 3 ];
+    this.w = this.iw * this.imgFactor;
+    this.h = this.ih * this.imgFactor;
 
     if( !CityBuilding.img )
     {
@@ -343,9 +344,9 @@ class CityBuilding
   draw( p )
   {
     this.e.ctx.drawImage( CityBuilding.img,
-                          this.ix, this.iy, this.w, this.h, // source rectangle
-                          p.x - this.w * this.imgFactor / 2, p.y - this.h * this.imgFactor, // x, y
-                          this.w * this.imgFactor, this.h * this.imgFactor ); // w, h
+                          this.ix, this.iy, this.iw, this.ih, // source rectangle
+                          p.x - this.w / 2, p.y - this.h,
+                          this.w, this.h );
   }
 }
 
@@ -353,12 +354,12 @@ export function buildCity( e, x, bCount, label=undefined )
 {
   let buildIx, b, building;
 
-  for( b=0;b < bCount;b++ )
+  for( b = 0;b < bCount;b++ )
   {
     buildIx = randInt( 0, CityBuilding.numBuildings - 1 );
     building = new CityBuilding( e, x, buildIx, label=label );
     e.addObject( building );
-    x += building.iw * 1.5;
+    x += 2;
   }
 }
 
@@ -413,13 +414,14 @@ class EBuilding // from miscBuildings.gif
     this.si = this.siMax = c.SI_E_BUILDING;
     this.points = c.POINTS_E_BUILDING;
     this.showSICount = 0;
-    this.imgFactor = 1.0;
+    this.imgFactor = 2.0;
 
-    const { x, y, w, h } = EBuilding.imgInfo[ this.buildIx ];
-    this.ix *= x; 
-    this.iy *= y;
-    this.iw *= w; //EBuilding.imgInfo[ this.buildIx ][ 2 ] ;
-    this.ih *= h; // EBuilding.imgInfo[ this.buildIx ][ 3 ] * this.imgFactor;
+    this.ix = EBuilding.imgInfo[ this.buildIx ][ 0 ];
+    this.iy = EBuilding.imgInfo[ this.buildIx ][ 1 ];
+    this.iw = EBuilding.imgInfo[ this.buildIx ][ 2 ];
+    this.ih = EBuilding.imgInfo[ this.buildIx ][ 3 ];
+    this.w = this.iw * this.imgFactor;
+    this.h = this.ih * this.imgFactor;
 
     if( !EBuilding.img )
     {
@@ -453,9 +455,9 @@ class EBuilding // from miscBuildings.gif
   draw( p )
   {
     this.e.ctx.drawImage( EBuilding.img,
-                          this.ix, this.iy, this.w, this.h, // source rectangle
-                          p.x - this.w * this.imgFactor / 2, p.y - this.h * this.imgFactor, // x, y
-                          this.w * this.imgFactor, this.h * this.imgFactor ); // w, h
+                          this.ix, this.iy, this.iw, this.ih, // source rectangle
+                          p.x - this.w / 2, p.y - this.h, // x, y
+                          this.w, this.h ); // w, h
   }
 }
 
@@ -468,7 +470,7 @@ export function buildEBase( e, x, bCount, label=undefined )
     buildIx = randInt( 0, EBuilding.numBuildings - 1 );
     buildObj = new EBuilding( e, x, buildIx, label="Enemy" )
     e.addObject( buildObj  );
-    x += buildObj.iw * 1.5; // adjust pixels to world coors.
+    x += 4; // adjust pixels to world coors.
   }
 }
 
@@ -488,20 +490,20 @@ export class Rectangle
 
   update( tstamp )
   {
-    //this.angle += tstamp / 200;
-    //this.v.y += .2;
-    //this.p.x += .2;
+    // this.angle += tstamp / 200;
+    // this.v.y += .2;
+    // this.p.x += .2;
   }
 
   draw( p )
   {
-
     this.e.ctx.strokeStyle = 'red';
     this.e.ctx.translate( p.x + this.v.x, p.y - this.v.y );
     this.e.ctx.rotate( this.angle );
 
     this.e.ctx.beginPath();
-    this.e.ctx.rect( -this.width/2 - this.v.x, -this.height/2 + this.v.y,
+    this.e.ctx.rect( -this.width/2 - this.v.x,
+                     -this.height/2 + this.v.y,
                       this.width, this.height );
     this.e.ctx.stroke();
 

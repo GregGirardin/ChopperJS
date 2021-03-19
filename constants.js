@@ -14,7 +14,7 @@ export const c =
 
   MAX_X_VEL : 3, // 0 means fwd, 1 means right not moving, -1 means left not moving
   MAX_Y_VEL : 4,
-  MIN_Y_VEL : -1,
+  MIN_Y_VEL : -2,
 
   SCREEN_WIDTH : 1600,
   SCREEN_HEIGHT : 800,
