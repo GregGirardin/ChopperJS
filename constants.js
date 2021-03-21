@@ -18,7 +18,7 @@ export const c =
 
   SCREEN_WIDTH : 1600,
   SCREEN_HEIGHT : 800,
-  SCREEN_PAD : 500,
+  SCREEN_PAD : 500, // Smaller saves wasted drawing. Make sure nothing disappears.
 
   PI : 3.14159,
   EFFECTIVE_ZERO : .001,

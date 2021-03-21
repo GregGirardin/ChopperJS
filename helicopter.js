@@ -211,11 +211,7 @@ export class Helicopter
     if( this.p.y < 0 )
       this.p.y = 0;
 
-    // figure out angle. + is degrees 'down' from level
-    // Accel in quickly +10deg (.175 rad)
-    // Maintain current dir +5
-    // decel to change direction -5
-    // idle 0
+    // figure out angle. + is down' from level. Accel +20deg, maintain dir +10, decel -10, idle 0
     const a20 = -.35; // 20 degres in radians.
     const a10 = -.175;
     let tgtAngle = 0.0;
@@ -276,7 +272,8 @@ export class Helicopter
 
   draw( p )
   {
-    var projShadow, hImg, xlate = new( Point );
+    var projShadow, hImg,
+        xlate = new( Point ); // translation of the objects postion from p
 
     xlate.x = 0;
     xlate.y = 0;
@@ -310,6 +307,19 @@ export class Helicopter
       this.e.ctx.scale( -1, 1 );
 
     this.e.ctx.rotate( this.bodyAngle );
+    this.e.ctx.lineWidth = 2;
+    // tail rotor. Draw behind body, looks cleaner.
+    if( this.chopperDir != c.DIRECTION_FORWARD )
+    {
+      this.e.ctx.strokeStyle = 'black';
+      this.e.ctx.beginPath();
+      let t = -this.rotorTheta * 2;
+      this.e.ctx.lineWidth = 2;
+      this.e.ctx.moveTo( 90 - 10 * Math.cos( t ), -10 - 10 * Math.sin( t ) );
+      this.e.ctx.lineTo( 90 + 10 * Math.cos( t ), -10 + 10 * Math.sin( t ) );
+      this.e.ctx.stroke();
+    }
+
     this.e.ctx.drawImage( hImg,
                           -hWidth / 2 - this.rotVertex.x, -hHeight / 2 - this.rotVertex.y,
                           hWidth, hHeight );
@@ -325,7 +335,7 @@ export class Helicopter
       this.e.ctx.stroke();
     }
 
-    // rotor
+    // rotor. Need to rotate the rotor since we're already using .rotate() to place it on the Helo
     const rLen = 80 * Math.cos( this.rotorTheta );
     this.e.ctx.strokeStyle = 'black';
     this.e.ctx.beginPath();
@@ -338,8 +348,15 @@ export class Helicopter
 
     // shadow
     projShadow = projection( this.e.camera, new Point( p.x, 0, p.z ) );
-    this.e.ctx.fillStyle = '#000000';
-    this.e.ctx.fillRect( p.x - hWidth/4, projShadow.y, hWidth/2, 1 );
+    this.e.ctx.fillStyle = 'black';
+    this.e.ctx.beginPath();
+    var offset = 0;
+    if( this.chopperDir == c.DIRECTION_LEFT )
+      offset = 10;
+    else if( this.chopperDir == c.DIRECTION_RIGHT )
+      offset = -10;
+    this.e.ctx.ellipse( p.x + offset, projShadow.y, hWidth/3, 2, 0, 0, 2 * c.PI )
+    this.e.ctx.fill();
 
     // fuel
     // structural integ

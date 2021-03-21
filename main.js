@@ -2,6 +2,7 @@ import { c } from './constants.js';
 import { SkyGround, MountainImg, HillImg, Cloud, Rock, Grass, Tree, Base, buildCity, buildEBase, Rectangle } from './background.js';
 import { Point, projection, collisionCheck } from './utils.js';
 import { Helicopter } from './helicopter.js';
+import { Plane } from './planes.js';
 
 /*
 import * as ai from './enemyAI.js';
@@ -26,6 +27,9 @@ class gameEngine
   {
     this.canvas = document.getElementById( "myCanvas" );
     this.ctx = this.canvas.getContext( "2d" );
+
+    this.canvas.width = c.SCREEN_WIDTH; // widen to check that we're not drawing far off screen
+    this.canvas.height = c.SCREEN_HEIGHT;
 
     this.x = this.canvas.width / 2;
     this.y = this.canvas.height - 30;
@@ -145,7 +149,9 @@ class gameEngine
     buildCity( this, c.MIN_WORLD_X, c.NUM_CITY_BUILDINGS );
     buildEBase( this, c.MAX_WORLD_X / 2, c.NUM_E_BASE_BUILDINGS + this.level * 2 );
 
-  //  this.objects.push( new GameManager( this ) )
+    //  this.objects.push( new GameManager( this ) )
+
+    this.objects.push( new Plane( this, "Fighter", 0, 30 ) );
 
    // Sort objects by decreasing Z so closer are drawn on top
     this.bg_objects.sort( function( a, b ){ return b.p.z - a.p.z } );
@@ -165,8 +171,8 @@ class gameEngine
     // new game timer
 
     // Collision detection
-    for( index1=0;index1 < this.objects.length - 1;index1++ )
-      for( index2=index1;index2 < this.objects.length;index2++ )
+    for( index1 = 0;index1 < this.objects.length - 1;index1++ )
+      for( index2 = index1;index2 < this.objects.length;index2++ )
       {
         let obj1 = this.objects[ index1 ];
         let obj2 = this.objects[ index2 ];
@@ -177,7 +183,7 @@ class gameEngine
         }
       }
 
-    for( index1=0;index1 < this.objects.length;index1++ )
+    for( index1 = 0;index1 < this.objects.length;index1++ )
       if( this.objects[ index1 ].update( deltaMs ) == false )
       {
         this.objects.splice( index1, 1 );
@@ -185,7 +191,7 @@ class gameEngine
       }
 
     // move the camera
-    var tgtCamXOff = 0;
+    var tgtCamXOff;
     switch( this.chopper.chopperDir )
     {
       case c.DIRECTION_FORWARD:
@@ -195,6 +201,7 @@ class gameEngine
       case c.DIRECTION_RIGHT:
         tgtCamXOff = 20; break;
     }
+
     if( Math.abs( this.currentCamOff - tgtCamXOff ) < 1 )
     {
       this.currentCamOff = tgtCamXOff;
@@ -220,7 +227,7 @@ class gameEngine
 
     this.ctx.clearRect( 0, 0, this.canvas.width, this.canvas.height );
 
-    for( index=0;index < this.bg_objects.length;index++ )
+    for( index = 0;index < this.bg_objects.length;index++ )
     {
       o = this.bg_objects[ index ];
       p = projection( this.camera, o.p );
@@ -240,7 +247,7 @@ class gameEngine
       }
     }
 
-    for( index=0;index < this.objects.length;index++ )
+    for( index = 0;index < this.objects.length;index++ )
     {
       o = this.objects[ index ];
       p = projection( this.camera, o.p );
@@ -268,9 +275,9 @@ class gameEngine
 
   }
 
-  loop( milliSeconds ) // the game loop
+  loop( tDeltams ) // the game loop
   {
-    this.update( milliSeconds );
+    this.update( tDeltams );
     this.draw();
   }
 

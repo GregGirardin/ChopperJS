@@ -13,6 +13,34 @@ function pointAlong( x1, y1, x2, y2, dis )
   return x3, y3;
 }
 
+export function addAngle( theta, delta )
+{
+  theta += delta;
+  if( theta < -c.PI )
+    theta += 2 * c.PI;
+  else if( theta > c.PI )
+    theta -= 2 * c.PI;
+  
+  return theta;
+}
+
+// given theta, is it facing RIGHT or LEFT?
+export function dirFromAngle( theta )
+{
+  return( ( Math.abs( theta ) < .5 * c.PI ) ? c.DIRECTION_RIGHT : c.DIRECTION_LEFT );
+}
+
+// if relative is say 10deg, then if we're facing right theta will be 10deg, if left it'll be 180-10 = 170 deg
+export function setRelTheta( theta, relative )
+{
+  let dir = dirFromAngle( theta );
+
+  theta = ( dir == c.DIRECTION_RIGHT ) ? relative : c.PI - relative;
+  theta = addAngle( theta, 0 ); // just for +-PI range bounds
+
+  return( theta );
+}
+
 export class Point
 {
   constructor( x=0, y=0, z=0 )
