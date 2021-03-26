@@ -95,7 +95,9 @@ export class Cloud
     this.e = e;
     this.oType = "Cloud";
     this.p = new Point( x, y, z );
-    this.firstTime = true;
+    this.w = 0;
+    this.h = 0;
+
     this.imgFactor = 1;
     if( z > 5000 )
       this.imgFactor = .1;
@@ -144,11 +146,11 @@ export class Cloud
 
   draw( p )
   {
-    if( this.firstTime ) // tbd, fix. Wait for load.
+    if( this.w == 0 )
     {
-      this.firstTime = false;
       this.w = Cloud.img.width * this.imgFactor;
       this.h = Cloud.img.height * this.imgFactor;
+      return;
     }
     this.e.ctx.drawImage( Cloud.img, p.x - this.w / 2, p.y - this.h / 2, this.w, this.h );
 
@@ -171,7 +173,6 @@ export class Rock
     this.oType = "Rock";
     this.p = new Point( x, y, z );
     this.imgFactor = randInt( 2, 5 ) / 2;
-    this.firstTime = true;
 
     if( !Rock.img )
     {
@@ -182,9 +183,8 @@ export class Rock
 
   draw( p )
   {
-    if( this.firstTime ) // tbd, fix. Wait for load.
+    if( !this.w || this.w == 0 )
     {
-      this.firstTime = false;
       this.w = Rock.img.width * this.imgFactor;
       this.h = Rock.img.height * this.imgFactor;
     }
@@ -202,7 +202,6 @@ export class Grass
     this.oType = "Grass";
     this.p = new Point( x, y, z );
     this.imgFactor = randInt( 1, 2 ) / 2;
-    this.firstTime = true;
 
     if( !Grass.img )
     {
@@ -213,13 +212,13 @@ export class Grass
 
   draw( p )
   {
-    if( this.firstTime ) // tbd, fix. Wait for load.
+    if( !this.w || this.w == 0 )
     {
-      this.firstTime = false;
       this.w = Grass.img.width * this.imgFactor;
       this.h = Grass.img.height * this.imgFactor;
     }
-    this.e.ctx.drawImage( Grass.img, p.x - this.w / 2, p.y - this.h, this.w, this.h );
+    else
+      this.e.ctx.drawImage( Grass.img, p.x - this.w / 2, p.y - this.h, this.w, this.h );
   }
 }
 
@@ -232,7 +231,6 @@ export class Tree
     this.e = e;
     this.oType = "Tree";
     this.p = new Point( x, y, z );
-    this.firstTime = true;
     this.imgFactor = .5;
     if( z > 1000 )
       this.imgFactor = .05;
@@ -249,12 +247,13 @@ export class Tree
 
   draw( p )
   {
-    if( this.firstTime ) // tbd, fix. Wait for load.
+    if( !this.w || this.w == 0 )
     {
-      this.firstTime = false;
       this.w = Tree.img.width * this.imgFactor;
       this.h = Tree.img.height * this.imgFactor;
+      return;
     }
+
     this.e.ctx.drawImage( Tree.img, p.x - this.w / 2, p.y - this.h, this.w, this.h );
   }
 }
@@ -285,9 +284,11 @@ export class Base
 
   draw( p )
   {
+    if( !this.w || this.w == 0 )
     {
       this.w = Base.img.width * this.imgFactor;
       this.h = Base.img.height * this.imgFactor;
+      return;
     }
 
     this.e.ctx.drawImage( Base.img, p.x - this.w / 2, p.y - this.h + 50, this.w, this.h );

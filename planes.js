@@ -92,11 +92,6 @@ export class Plane
         o.image.src = o.src;
       }
     }
-
-    // tbd, wait for load.
-    // this.image = Plane.planes[ this.planeType ].image;
-    // this.width = this.image.width * Plane.planes[ this.planeType ].imgFactor;
-    // this.height = this.image.height * Plane.planes[ this.planeType ].imgFactor;
   }
 
   processMessage( message, param=undefined )
@@ -260,11 +255,12 @@ export class Plane
   {
     // tbd, this should be done once to save time.
 
-    // tbd, fix. Wait for load.
+    if( !this.w || this.w == 0 )
     {
       this.i = Plane.planes[ this.oType ].image;
       this.w = this.i.width * Plane.planes[ this.oType ].imgFactor;
       this.h = this.i.height * Plane.planes[ this.oType ].imgFactor;
+      ReadableStreamDefaultController;
     }
 
     this.e.ctx.translate( p.x, p.y );

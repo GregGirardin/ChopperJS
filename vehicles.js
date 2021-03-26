@@ -57,7 +57,7 @@ export class Vehicle
               },
   }
 
-  constructor( e, type, x )
+  constructor( e, type, x, dir=c.DIR_LEFT )
   {
     this.e = e;
     this.oType = type;
@@ -70,22 +70,19 @@ export class Vehicle
     this.wheelR = Vehicle.vehicles[ type ].wheelR;
     this.p = new Point( x, 0, 2 );
     this.showSICount = 0;
-    this.bodyAngle = 0;
+    this.bodyAngle = (dir == c.DIR_LEFT) ? c.PI : 0;
 
     if( !Vehicle.vehicles.Jeep.image )
-    {
       for( const[ k, o ] of Object.entries( Vehicle.vehicles ) )
       {
         o.image = new Image();
         o.image.src = o.src;
       }
-    }
   }
 
   processMessage( message, param=undefined )
   {
     if( message == c.MSG_COLLISION_DET )
-    {
       if( param.oType == c.OBJECT_TYPE_WEAPON )
       {
         this.showSICount = c.SHOW_SI_COUNT;
@@ -93,7 +90,6 @@ export class Vehicle
         if( this.si < 0 )
           this.e.addObject( new SpriteSheet( this.e, "Explosion1", this.p ) );
        }
-    }
   }
 
   update( deltaMs )
@@ -116,43 +112,6 @@ export class Vehicle
       this.bodyAngle = c.PI;
 
     return true;
-  }
-
-  draw( p )
-  {
-    {
-      this.i = Vehicle.vehicles[ this.oType ].image;
-      this.w = this.i.width * this.imgFactor;
-      this.h = this.i.height * this.imgFactor;
-    }
-
-    this.e.ctx.translate( p.x, p.y );
-    let theta = this.bodyAngle;
-    let wheelRot = this.p.x;
-
-    if( dirFromAngle( this.bodyAngle ) == c.DIRECTION_LEFT )
-    {
-      wheelRot *= -1;
-      this.e.ctx.scale( 1, -1 );
-    }
-    else
-      theta = -theta;
-
-    this.e.ctx.rotate( theta );
-    
-    var index;
-    for( index = 0;index < this.wheelX.length;index++ )
-      this.drawWheel( this.wheelX[ index ], this.wheelY, this.wheelR, wheelRot );
-
-    this.e.ctx.drawImage( this.i, -this.w / 2, -this.h, this.w, this.h );
-
-    this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
-
-    const projShadow = projection( this.e.camera, new Point( p.x, 0, 0 ) );
-    this.e.ctx.fillStyle = 'black';
-    this.e.ctx.beginPath();
-    this.e.ctx.ellipse( p.x, projShadow.y, this.w/3, 2, 0, 0, 2 * c.PI )
-    this.e.ctx.fill();
   }
 
   drawWheel( x, y, radius, angle )
@@ -187,5 +146,43 @@ export class Vehicle
 
       theta += ( 2 * c.PI ) / 4;
     }
+  }
+
+  draw( p )
+  {
+    if( !this.w || this.w == 0 )
+    {
+      this.i = Vehicle.vehicles[ this.oType ].image;
+      this.w = this.i.width * this.imgFactor;
+      this.h = this.i.height * this.imgFactor;
+    }
+
+    this.e.ctx.translate( p.x, p.y );
+    let theta = this.bodyAngle;
+    let wheelRot = this.p.x;
+
+    if( dirFromAngle( this.bodyAngle ) == c.DIR_LEFT )
+    {
+      wheelRot *= -1;
+      this.e.ctx.scale( 1, -1 );
+    }
+    else
+      theta = -theta;
+
+    this.e.ctx.rotate( theta );
+    
+    var index;
+    for( index = 0;index < this.wheelX.length;index++ )
+      this.drawWheel( this.wheelX[ index ], this.wheelY, this.wheelR, wheelRot );
+
+    this.e.ctx.drawImage( this.i, -this.w / 2, -this.h, this.w, this.h );
+
+    this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
+
+    const projShadow = projection( this.e.camera, new Point( p.x, 0, 0 ) );
+    this.e.ctx.fillStyle = 'black';
+    this.e.ctx.beginPath();
+    this.e.ctx.ellipse( p.x, projShadow.y, this.w/3, 2, 0, 0, 2 * c.PI )
+    this.e.ctx.fill();
   }
 }

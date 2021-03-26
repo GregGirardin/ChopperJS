@@ -75,8 +75,43 @@ export class Tank
     return true;
   }
 
+  drawWheel( x, y, radius, angle )
+  {
+    // outer black / rubber, inner silver, inner white
+    this.e.ctx.beginPath();
+    this.e.ctx.fillStyle = 'black';
+    this.e.ctx.ellipse( x, y, radius, radius, 0, 0, 2 * c.PI );
+    this.e.ctx.fill();
+
+    this.e.ctx.beginPath();
+    this.e.ctx.fillStyle = 'grey';
+    this.e.ctx.ellipse( x, y, radius *.65, radius * .65, 0, 0, 2 * c.PI );
+    this.e.ctx.fill();
+
+    this.e.ctx.beginPath();
+    this.e.ctx.fillStyle = 'white';
+    this.e.ctx.ellipse( x, y, radius * .33, radius * .33, 0, 0, 2 * c.PI );
+    this.e.ctx.fill();
+
+    // Draw lug nuts to indicate rotation
+    var theta = 0;
+    radius *= .5;
+    while( theta < 2 * c.PI )
+    {
+      let lnx = x + radius * Math.cos( theta - angle );
+      let lny = y - radius * Math.sin( theta - angle );
+      this.e.ctx.beginPath();
+      this.e.ctx.fillStyle = 'black';
+      this.e.ctx.ellipse( lnx, lny, 2, 2, 0,0, 2 * c.PI );
+      this.e.ctx.fill();
+
+      theta += ( 2 * c.PI ) / 4;
+    }
+  }
+
   draw( p )
   {
+    if( !this.w || this.w == 0 )
     {
       this.i = Tank.image;
       this.ci = Tank.cannon;
@@ -87,6 +122,7 @@ export class Tank
       this.ch = this.ci.height * this.f;      
 
       this.d2p = 72 * this.f; // distance from p to cannon pivot vertex
+      return;
     }
 
     // The cannon.
@@ -158,37 +194,4 @@ export class Tank
     this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
   }
 
-  drawWheel( x, y, radius, angle )
-  {
-    // outer black / rubber, inner silver, inner white
-    this.e.ctx.beginPath();
-    this.e.ctx.fillStyle = 'black';
-    this.e.ctx.ellipse( x, y, radius, radius, 0, 0, 2 * c.PI );
-    this.e.ctx.fill();
-
-    this.e.ctx.beginPath();
-    this.e.ctx.fillStyle = 'grey';
-    this.e.ctx.ellipse( x, y, radius *.65, radius * .65, 0, 0, 2 * c.PI );
-    this.e.ctx.fill();
-
-    this.e.ctx.beginPath();
-    this.e.ctx.fillStyle = 'white';
-    this.e.ctx.ellipse( x, y, radius * .33, radius * .33, 0, 0, 2 * c.PI );
-    this.e.ctx.fill();
-
-    // Draw lug nuts to indicate rotation
-    var theta = 0;
-    radius *= .5;
-    while( theta < 2 * c.PI )
-    {
-      let lnx = x + radius * Math.cos( theta - angle );
-      let lny = y - radius * Math.sin( theta - angle );
-      this.e.ctx.beginPath();
-      this.e.ctx.fillStyle = 'black';
-      this.e.ctx.ellipse( lnx, lny, 2, 2, 0,0, 2 * c.PI );
-      this.e.ctx.fill();
-
-      theta += ( 2 * c.PI ) / 4;
-    }
-  }
 }

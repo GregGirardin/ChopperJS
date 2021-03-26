@@ -161,7 +161,7 @@ class gameEngine
     this.objects.push( new Plane( this, "Fighter1", 100, 30 ) );
     this.objects.push( new Plane( this, "Fighter2", 0, 30 ) );
     this.objects.push( new Plane( this, "Bomber1", 20, 30 ) );
-    this.objects.push( new Vehicle( this, "Jeep", c.MIN_WORLD_X ) );
+    this.objects.push( new Vehicle( this, "Jeep", 100, c.DIR_LEFT ) );
     this.objects.push( new Vehicle( this, "Transport1", c.MIN_WORLD_X ) );
     this.objects.push( new Vehicle( this, "Transport2", c.MIN_WORLD_X ) );
     this.objects.push( new Vehicle( this, "Truck", c.MIN_WORLD_X ) );
@@ -170,7 +170,6 @@ class gameEngine
      // Sort objects by decreasing Z so closer are drawn on top
     this.bg_objects.sort( function( a, b ){ return b.p.z - a.p.z } );
     this.objects.sort( function( a, b ){ return b.p.z - a.p.z } ) ;
-    
   }
 
   addObject( newobj )

@@ -1,6 +1,7 @@
 import { c } from './constants.js';
 import { Point, projection, setRelTheta, getRelTheta, Vector, dirFromAngle } from './utils.js';
 import { Missile } from './missiles.js';
+import { Explosion } from './explosions.js';
 
 export class Helicopter
 {
@@ -129,46 +130,17 @@ export class Helicopter
               this.tgtYv = c.MIN_Y_VEL;
             break;
 
-          // case "w":
-          //   this.rotVertex.y -= 1; this.logVertex = true; break
-          // case "s":
-          //   this.rotVertex.y += 1; this.logVertex = true; break
-          // case "a":
-          //   this.rotVertex.x -= 1; this.logVertex = true; break
-          // case "d":
-          //   this.rotVertex.x += 1; this.logVertex = true; break
-          // Don't spawn weapons here. Let's keep that loosely coupled. Spawn in update().
-          case "a": // missle A
-            //if( this.curAmount[ c.RESOURCE_SM ] > 0 )
-            {
-              this.weapon = "MissileA";
-              this.curAmount[ c.RESOURCE_SM ] -= 1;
-            }
+          case "a":
+            this.weapon = "MissileA";
             break;
 
-          case "b": // missle b
-            //if( this.curAmount[ c.RESOURCE_LM ] > 0 )
-            {
-              this.weapon = "MissileB";
-              this.curAmount[ c.RESOURCE_LM ] -= 1;
-            }
+          case "s":
+            this.weapon = "MissileB";
             break;
 
-          case "c": // bomb
-            if( this.curAmount[ c.RESOURCE_BOMB ] > 0 )
-            {
-              this.weapon = "Bomb";
-              this.curAmount[ c.RESOURCE_BOMB ] -= 1;
-            }
+          case "d":
+            this.weapon = "Bomb";
             break;
-
-          case "d": // bullet
-//            if( this.curAmount[ c.RESOURCE_BULLET ] > 0 && this.bulletRdyCounter <= 0 )
-            {
-              this.weapon = "Bullet";
-              this.curAmount[ c.RESOURCE_BULLET ] -= 1;
-              this.bulletRdyCounter = c.BULLET_WAIT_TIME;
-            }
 
           }
         break;
@@ -208,17 +180,6 @@ export class Helicopter
     }
   }
 
-  // Get actual desired X velocity from tgtXv
-  // tgtXv of -1 0 1 all mean don't move, -1 means face left, 0 fwd, 1 right.
-  // getTgtXVel()
-  // {
-  //   let tgtVel = this.tgtXv;
-  //   if( Math.abs( tgtVel ) <= 1 )
-  //     return 0;
-  //   else
-  //     return ( tgtVel > 0 ) ? tgtVel - 1 : tgtVel + 1;
-  // }
-
   update( deltaMs )
   {
     if( this.curAmount[ c.RESOURCE_SI ] < 0 )
@@ -231,21 +192,19 @@ export class Helicopter
     {
       let direction = setRelTheta( ( this.chopperDir == c.DIR_RIGHT ) ? 0 : c.PI, this.bodyAngle )
 
-      if( this.chopperDir != c.DIR_FWD )
+      if( this.chopperDir != c.DIR_FWD || this.weapon == "Bomb" )
         this.e.addObject( new Missile( this.e,
-                                      this.weapon,
-                                      new Point( this.p.x, this.p.y, 1 ),
-                                      direction,
-                                      this.v ) );
+                                       this.weapon,
+                                       new Point( this.p.x, this.p.y, 1 ),
+                                       direction,
+                                       this.v ) );
       this.weapon = undefined;
     }
 
     if( this.bulletRdyCounter > 0 )
       this.bulletRdyCounter -= deltaMs;
 
-    // Accelerate to target velocities
-    // this.v.xx -1,0,1 mean not moving but facing left, fwd, right
-
+    // Accelerate to target v
     if( this.v.xc < this.tgtXv )
       this.v.xc += deltaMs / 100;
     else if( this.v.xc > this.tgtXv )

@@ -157,10 +157,14 @@ export class Missile
 
   draw( p )
   {
-    this.i = Missile.missiles[ this.oType ].image; // tbd
-    this.w = this.i.width * Missile.missiles[ this.oType ].imgFactor;
-    this.h = this.i.height * Missile.missiles[ this.oType ].imgFactor;
-
+    if( !this.w || this.w == 0 )
+    {
+      this.i = Missile.missiles[ this.oType ].image; // tbd
+      this.w = this.i.width * Missile.missiles[ this.oType ].imgFactor;
+      this.h = this.i.height * Missile.missiles[ this.oType ].imgFactor;
+      return;
+    }
+  
     this.e.ctx.translate( p.x, p.y );
 
     let theta = this.bodyAngle;
