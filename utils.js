@@ -4,14 +4,7 @@ function distance( x1, y1, x2, y2 )
 {
   return Math.sqrt( ( x1 - x2 ) ** 2 + ( y1 - y2 ) ** 2 );
 }
-// given p1, p2, return p3 which is the point dis along the line from p1 to p2
-function pointAlong( x1, y1, x2, y2, dis )
-{
-  dis /= distance( x1, y1, x2, y2 ); // turn distance in units to a fraction
-  x3 = x1 + ( x2 - x1 ) * dis;
-  y3 = y1 + ( y2 - y1 ) * dis;
-  return x3, y3;
-}
+
 
 export function addAngle( theta, delta )
 {
@@ -27,7 +20,7 @@ export function addAngle( theta, delta )
 // given theta, is it facing RIGHT or LEFT?
 export function dirFromAngle( theta )
 {
-  return( ( Math.abs( theta ) < .5 * c.PI ) ? c.DIRECTION_RIGHT : c.DIRECTION_LEFT );
+  return( ( Math.abs( theta ) < .5 * c.PI ) ? c.DIR_RIGHT : c.DIR_LEFT );
 }
 
 // if relative is say 10deg, then if we're facing right theta will be 10deg, if left it'll be 180-10 = 170 deg
@@ -35,10 +28,33 @@ export function setRelTheta( theta, relative )
 {
   let dir = dirFromAngle( theta );
 
-  theta = ( dir == c.DIRECTION_RIGHT ) ? relative : c.PI - relative;
+  theta = ( dir == c.DIR_RIGHT ) ? relative : c.PI - relative;
   theta = addAngle( theta, 0 ); // just for +-PI range bounds
 
   return( theta );
+}
+
+// What's theta relative to 'level'.
+// Level is 0 if right, +/i c.PI if going left.
+export function getRelTheta( theta )
+{
+  let dir = dirFromAngle( theta );
+  if( dir == c.DIR_RIGHT )
+    return theta;
+  else
+    return( theta > 0 ? c.PI - theta : -( theta + c.PI ) );
+}
+
+// What's the angle from t1 to t2? + means t2 CCW from t1, aka t1 + diff = t2
+export function angleDiff( t1, t2 )
+{
+  let diff = t2 - t1;
+  if( diff > c.PI )
+    diff = 2 * c.PI - diff;
+  else if( diff < -c.PI )
+    diff = -2 * c.pi - diff + c.PI;
+
+  return diff;
 }
 
 export class Point
@@ -60,153 +76,151 @@ export class Point
     cx = p.x - this.x;
     cy = p.y - this.y;
 
-    magnitude = Math.sqrt( cx ** 2 + cy ** 2 );
+    mag = Math.sqrt( cx ** 2 + cy ** 2 );
 
-    if( magnitude < c.EFFECTIVE_ZERO )
-      direction = 0;
+    if( mag < c.EFFECTIVE_ZERO )
+      dir = 0;
     else
       if( Math.abs( cx ) < c.EFFECTIVE_ZERO )
         if( cy > 0 )
-          direction = -c.PI / 2;
+          dir = -c.PI / 2;
         else
-          direction = c.PI / 2;
+          dir = c.PI / 2;
       else if( cx > 0 )
-        direction = Math.atan( -cy / cx );
+        dir = Math.atan( -cy / cx );
       else
-        direction = c.PI + Math.atan( -cy / cx );
-    return direction;
+        dir = c.PI + Math.atan( -cy / cx );
+
+    return dir;
   }
 
   move( v )
   {
-    this.x += v.dx();
-    this.y += v.dy();
+    this.x += v.xc;
+    this.y += v.yc;
   }
 }
 
 export class Vector
 {
-  constructor( d, m, maxLen=None )
+  constructor( xc=0, yc=0 ) // x, y components
   {
-    this.direction = d; // 0 is right, PI/2 is up, PI is left, -PI/2 is down
-    this.magnitude = m;
-    this.maxLen = maxLen;
-  }
-  // Add vector v
-  add( v )
-  {
-    cx = this.dx() + v.dx(); //v.magnitude * Math.cos( v.direction )
-    cy = this.dy() + v.dy(); //v.magnitude * Math.sin( v.direction )
-    magnitude = Math.sqrt( cx ** 2 + cy ** 2 );
-    direction = vec_dir( cx, cy );
-    if( this.maxLen )
-      if( this.magnitude > this.maxLen )
-        this.magnitude = this.maxLen;
-    this.magnitude = magnitude;
-    this.direction = direction;
+    this.xc = xc;
+    this.yc = yc;
   }
 
-  direction()
+  setPolar( ang, mag ) // angle, magnitude
   {
-    return this.direction;
+    this.xc = mag * Math.cos( ang );
+    this.yc = mag * Math.sin( ang );
   }
 
-  dx()
+  getPolar() // get polar coords as object
   {
-    return this.magnitude * Math.cos( this.direction );
-  }
+    var mag = Math.sqrt( this.xc ** 2 + this.yc ** 2 );
+    var ang = 0;
 
-  dy()
-  {
-    return this.magnitude * Math.sin( this.direction );
-  }
-
-  flipx()
-  {
-    this.direction = vec_dir( -this.dx(), this.dy() );
-  }
-
-  flipy()
-  {
-    this.direction = vec_dir( this.dx(), -this.dy() );
-  }
-
-  dot( angle )
-  {
-    theta = Math.abs( this.direction - angle );
-    return this.magnitude * Math.cos( theta );
-  }
-}
-
-export function vecFromComps( dx, dy )
-{
-  direction = vec_dir( dx, dy );
-  magnitude = Math.sqrt( dx ** 2 + dy ** 2 );
-  return Vector( direction, magnitude );
-}
-
-  // Compute angle of a vector (dx, dy)
-function vec_dir( dx, dy )
-{
-  magnitude = Math.sqrt( dx ** 2 + dy ** 2 );
-
-  if( magnitude < c.EFFECTIVE_ZERO )
-    direction = 0;
-  else
-  {
-    if( Math.abs( dx ) < EFFECTIVE_ZERO )
-      if( dy > 0 )
-        direction = PI / 2;
+    if( mag > c.EFFECTIVE_ZERO )
+    {
+      if( Math.abs( this.xc ) < c.EFFECTIVE_ZERO )
+        if( this.yc > 0 )
+          ang = c.PI / 2;
+        else
+          ang = -c.PI / 2;
+      else if( this.xc > 0 )
+        ang = Math.atan( this.yc / this.xc );
       else
-        direction = -PI / 2;
-    else if( dx > 0 )
-      direction = Math.atan( dy / dx );
-    else
-      direction = PI + Math.atan( dy / dx );
-
-  return direction;
+        ang = c.PI + Math.atan( this.yc / this.xc );
+    }
+    return { ang, mag };
   }
 }
-// Given vectors f and t (from, to) return a vector that would connect f to t
-export function vectorDiff( f, t )
-{
-  dx = t.dx() - f.dx();
-  dy = t.dy() - f.dy();
 
-  m = Math.sqrt( dx ** 2 + dy ** 2 );
-  d = vec_dir( dx, dy );
-  return new Vector( m, d );
-}
+// class VectorPolar // Cases where using polar coords is more efficent.
+// {
+//   constuctor( m=0, d=0 )
+//   {
+//     this.m = m; // store as polar. Convert to cartesian when necessary
+//     this.d = d;
+//   }
 
-//Given a Camera at Point cam and a point at p, compute the screen coordinates
-//See projection.jpg
+//   setCart( dx, dy )
+//   {
+//     this.m = Math.sqrt( dx ** 2 + dy ** 2 );
+
+//     if( this.m < c.EFFECTIVE_ZERO )
+//       this.d = 0;
+//     else
+//     {
+//       if( Math.abs( dx ) < EFFECTIVE_ZERO )
+//         if( dy > 0 )
+//           this.d = c.PI / 2;
+//         else
+//           this.d = -c.PI / 2;
+//       else if( dx > 0 )
+//         this.d = Math.atan( dy / dx );
+//       else
+//         this.d = PI + Math.atan( dy / dx );
+//     }
+//   }
+
+//   modCart( dx, dy )
+//   {
+//     v = this.getCart();
+//     v.dx += dx;
+//     v.dy += dy;
+//     this.setCart( v.dx, v.dy );
+//   }
+// }
+
+
+// export function polarFromCart( dx, dy )
+// {
+//   const mag = Math.sqrt( dx ** 2 + dy ** 2 );
+//   let dir = undefined
+
+//   if( mag < c.EFFECTIVE_ZERO )
+//     dir = 0;
+//   else
+//   {
+//     if( Math.abs( dx ) < EFFECTIVE_ZERO )
+//       if( dy > 0 )
+//         dir = c.PI / 2;
+//       else
+//         dir = -c.PI / 2;
+//     else if( dx > 0 )
+//       dir = Math.atan( dy / dx );
+//     else
+//       dir = PI + Math.atan( dy / dx );
+//   }
+//   return { mag, dir };
+// }
+
+
+// Given a Camera at Point cam and a point at p, compute the screen coordinates. See projection.jpg
 
 export function projection( cam, p )
 {
-  var x1, y1, zTot, thetaX, thetaY, projEdgeX, projEdgeY;
-  var pProjX, pProjY, xNorm, yNorm, xRaster, yRaster
-  //assert c.z > 1, "Camera in front of projection plane"
+  const x1 = p.x - cam.x; // translate to camera coords (like p is at 0,0)
+  const y1 = p.y - cam.y;
+  const zTot = p.z + cam.z; // Distance from camera to the plane p is on
 
-  x1 = p.x - cam.x; // translate to camera coords (like camera is at 0,0)
-  y1 = p.y - cam.y;
-  zTot = p.z + cam.z; // Distance from camera to the plane p is on
-
-  thetaX = Math.atan( x1 / zTot );
-  thetaY = Math.atan( y1 / zTot );
+  const thetaX = Math.atan( x1 / zTot );
+  const thetaY = Math.atan( y1 / zTot );
 
   // If camera Z never changes make into constants..
-  projEdgeX = cam.z * Math.tan( c.CAM_FOV_X / 2 ); // X value of edge of screen at proj plane
-  projEdgeY = cam.z * Math.tan( c.CAM_FOV_Y / 2 ); // Y value of edge of screen
+  const projEdgeX = cam.z * Math.tan( c.CAM_FOV_X / 2 ); // X value of edge of screen at proj plane
+  const projEdgeY = cam.z * Math.tan( c.CAM_FOV_Y / 2 ); // Y value of edge of screen
 
-  pProjX = cam.z * Math.tan( thetaX ); // where p is on the projection plane
-  pProjY = cam.z * Math.tan( thetaY );
+  const pProjX = cam.z * Math.tan( thetaX ); // where p is on the projection plane
+  const pProjY = cam.z * Math.tan( thetaY );
 
-  xNorm = pProjX / projEdgeX; // Normalized coords. +1 to -1 mean screen edges
-  yNorm = pProjY / projEdgeY;
+  const xNorm = pProjX / projEdgeX; // Normalized coords. +1 to -1 mean screen edges
+  const yNorm = pProjY / projEdgeY;
 
   // ( 0, 0 ) is the pixel at ( SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 ). +y is up, so flip y
-  xRaster = ( c.SCREEN_WIDTH  / 2 ) + ( c.SCREEN_WIDTH  / 2 ) * xNorm;
-  yRaster = ( c.SCREEN_HEIGHT / 2 ) - ( c.SCREEN_HEIGHT / 2 ) * yNorm;
+  const xRaster = ( c.SCREEN_WIDTH  / 2 ) + ( c.SCREEN_WIDTH  / 2 ) * xNorm;
+  const yRaster = ( c.SCREEN_HEIGHT / 2 ) - ( c.SCREEN_HEIGHT / 2 ) * yNorm;
 
   return new Point( xRaster, yRaster, 0 );
 }
@@ -216,7 +230,7 @@ export function projection( cam, p )
 // Collision detection is done using screen coordinates since that's the player sees.
 // and may not correspond perfectly based on sprite shape.
 
-export function collisionCheck( e, obj1, obj2 )
+export function collisionCheck( o1, o2 )
 {
   return false;
 }
@@ -232,9 +246,7 @@ export function distanceToObjectType( e, xPos, oType )
 
 export function showSI( c, p, o )
 {
-  if( o.showSICount > 0 )
-  {
-  }
+  if( o.showSICount > 0 ) { }
 }
 
 export class dbgPoint // Debug point
@@ -246,18 +258,18 @@ export class dbgPoint // Debug point
     this.colRect = ( -1, -1, 1, 1 );
   }
 
-  processMessage( message, param=None )
-  {
-  }
+  processMessage( message, param=None ) { }
 
-  update( e )
-  {
-    return True;
-  }
+  update( e ) { return True; }
 
   draw( e )
   {
     proj = projection( e.camera, this.p );
     e.canvas.create_rectangle( proj.x - 1, proj.y - 1, proj.x, proj.y, outline="red" );
   }
+}
+
+export function randInt( min, max )
+{
+  return Math.floor( Math.random() * ( max - min ) ) + min;
 }

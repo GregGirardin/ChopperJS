@@ -1,8 +1,11 @@
 import { c } from './constants.js';
-import { SkyGround, MountainImg, HillImg, Cloud, Rock, Grass, Tree, Base, buildCity, buildEBase, Rectangle } from './background.js';
-import { Point, projection, collisionCheck } from './utils.js';
+import { SkyGround, Mtn, Hill, Cloud, Rock, Grass, Tree, Base, buildCity, buildEBase, Rectangle } from './background.js';
+import { Point, projection, collisionCheck, angleDiff, randInt } from './utils.js';
 import { Helicopter } from './helicopter.js';
 import { Plane } from './planes.js';
+import { Vehicle } from './vehicles.js';
+import { Tank } from './tank.js';
+import { Missile } from './missiles.js';
 
 /*
 import * as ai from './enemyAI.js';
@@ -15,11 +18,6 @@ import * as tank from './tank.js';
 */
 
 window.onload = gameInit;
-
-function randInt( min, max )
-{
-  return Math.floor( Math.random() * ( max - min ) ) + min;
-}
 
 class gameEngine
 {
@@ -46,7 +44,16 @@ class gameEngine
     this.newGameTimer = 0;
     this.currentCamOff = -20; // Start from the left initially to show the City
     this.showDirections = true;
+    this.cityDestroyed = false;
     this.newGame();
+    // hack delay so sprits have time to load. Fix this tbd
+    const date = Date.now();
+    let currentDate = null;
+    do
+    {
+      currentDate = Date.now();
+    } while ( currentDate - date < 500 );
+
   }
 
   newGame()
@@ -115,9 +122,9 @@ class gameEngine
     // Sky and ground
     this.bg_objects.push( new SkyGround( this ) );
 
-    // Mountain range
-    this.bg_objects.push( new MountainImg( this, 200, 0, c.HORIZON_DISTANCE / 2 ) );
-    this.bg_objects.push( new HillImg( this, 200, 0, c.HORIZON_DISTANCE / 4 ) );
+    // // Mountain range
+    this.bg_objects.push( new Mtn( this, 200, 0, c.HORIZON_DISTANCE / 2 ) );
+    this.bg_objects.push( new Hill( this, 200, 0, c.HORIZON_DISTANCE / 4 ) );
     
     // Clouds.. clouds move so they're active.
     for( z = 1;z < 10;z++ )
@@ -128,12 +135,12 @@ class gameEngine
                                              c.HORIZON_DISTANCE / 2 ) ) ); // in front of the mountains
 
     // Rocks
-    for( z = -3;z < 12;z += 2 ) // Z is behind projection plane but the math works.
-      this.bg_objects.push( new Rock( this, randInt( 30, c.MAX_WORLD_X ), 0, z ) );
+    for( z = 2;z < 22;z += 1 ) // Z is behind projection plane but the math works.
+      this.bg_objects.push( new Rock( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
 
     // Grass
-    for( z = 25;z < 40;z++ )
-      this.bg_objects.push( new Grass( this, randInt( 20, c.MAX_WORLD_X ), 0, z ) );
+    for( z = 25;z < 90;z++ )
+      this.bg_objects.push( new Grass( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
 
     // Trees
     for( z = 40;z < 500;z += 20 )
@@ -144,16 +151,23 @@ class gameEngine
 
     // Create the Chopper
     this.chopper = new Helicopter( this, 0, 0, 1 );
-    this.objects.push( this.chopper );
+    this.objects.push( this. chopper );
 
     buildCity( this, c.MIN_WORLD_X, c.NUM_CITY_BUILDINGS );
     buildEBase( this, c.MAX_WORLD_X / 2, c.NUM_E_BASE_BUILDINGS + this.level * 2 );
 
-    //  this.objects.push( new GameManager( this ) )
+     // this.objects.push( new GameManager( this ) )
 
-    this.objects.push( new Plane( this, "Fighter", 0, 30 ) );
+    this.objects.push( new Plane( this, "Fighter1", 100, 30 ) );
+    this.objects.push( new Plane( this, "Fighter2", 0, 30 ) );
+    this.objects.push( new Plane( this, "Bomber1", 20, 30 ) );
+    this.objects.push( new Vehicle( this, "Jeep", c.MIN_WORLD_X ) );
+    this.objects.push( new Vehicle( this, "Transport1", c.MIN_WORLD_X ) );
+    this.objects.push( new Vehicle( this, "Transport2", c.MIN_WORLD_X ) );
+    this.objects.push( new Vehicle( this, "Truck", c.MIN_WORLD_X ) );
+    this.objects.push( new Tank( this, -10 ) );
 
-   // Sort objects by decreasing Z so closer are drawn on top
+     // Sort objects by decreasing Z so closer are drawn on top
     this.bg_objects.sort( function( a, b ){ return b.p.z - a.p.z } );
     this.objects.sort( function( a, b ){ return b.p.z - a.p.z } ) ;
     
@@ -194,11 +208,11 @@ class gameEngine
     var tgtCamXOff;
     switch( this.chopper.chopperDir )
     {
-      case c.DIRECTION_FORWARD:
+      case c.DIR_FWD:
         tgtCamXOff = 0; break;
-      case c.DIRECTION_LEFT:
+      case c.DIR_LEFT:
         tgtCamXOff = -20; break;
-      case c.DIRECTION_RIGHT:
+      case c.DIR_RIGHT:
         tgtCamXOff = 20; break;
     }
 

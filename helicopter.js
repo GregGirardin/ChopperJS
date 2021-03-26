@@ -1,10 +1,11 @@
 import { c } from './constants.js';
-import { Point, projection } from './utils.js';
+import { Point, projection, setRelTheta, getRelTheta, Vector, dirFromAngle } from './utils.js';
+import { Missile } from './missiles.js';
 
 export class Helicopter
 {
   static heloForward;
-  static heloL;
+  static heloR;
   static missileA;
   static missileB;
   static bomb;
@@ -14,19 +15,18 @@ export class Helicopter
     this.debugCounter = 0;
 
     this.e = e;
-    this.oType = c.OBJECT_TYPE_CHOPPER;
+    this.oType = "Chopper";
     this.colRect = [ -2, 3, 2, 0 ];
     this.p = new Point( x, y, z );
     this.rotVertex = new Point();
     this.logVertex = false;
     this.onGround = false;
     this.rotorTheta = 0.0;
-    this.vx = 0.0; // velocity
-    this.vy = 0.0;
-    this.tgtXVelocity = 0;
-    this.tgtYVelocity = 0;
+    this.v = new Vector(); // velocity
+    this.tgtXv = 0;
+    this.tgtYv = 0;
     this.bodyAngle = 0; // + means down, left or right. This does not indicate direction
-    this.chopperDir = c.DIRECTION_FORWARD;
+    this.chopperDir = c.DIR_FWD;
     this.weapon = c.WEAPON_NONE; // This gets set and then fired in the next update()
                                  // Trying to keep msg processing loosely coupled.
     // c.RESOURCEs / weapons. See c.RESOURCE_XYZ
@@ -40,15 +40,15 @@ export class Helicopter
     if( !Helicopter.heloForward )
     {
       Helicopter.heloForward  = new Image();
-      Helicopter.heloL        = new Image();
+      Helicopter.heloR        = new Image();
       Helicopter.missileA     = new Image(); // to display inventory.
       Helicopter.missileB     = new Image();
       Helicopter.bomb         = new Image();
 
       Helicopter.heloForward.src  = "./images/chopper/bodyForward.gif";
-      Helicopter.heloL.src        = "./images/chopper/bodyLeft.gif";
-      Helicopter.missileA.src     = "./images/chopper/missileA_L.gif";
-      Helicopter.missileB.src     = "./images/chopper/missileB_L.gif";
+      Helicopter.heloR.src        = "./images/chopper/bodyRight.gif";
+      Helicopter.missileA.src     = "./images/chopper/missileA.gif";
+      Helicopter.missileB.src     = "./images/chopper/missileB.gif";
       Helicopter.bomb.src         = "./images/chopper/bomb.gif";
     }
   } 
@@ -63,67 +63,113 @@ export class Helicopter
         switch( param.key )
         {
           case "ArrowRight":
-            this.tgtXVelocity++;
-            if( this.tgtXVelocity > c.MAX_X_VEL )
-              this.tgtXVelocity = c.MAX_X_VEL;
+            if( this.p.y > 0 )
+            {
+              if( this.tgtXv < 0 )
+              {
+                this.tgtXv += c.MAX_C_X_VEL / 2;
+                if( this.tgtXv > 0 )
+                  this.tgtXv = 0;
+              }
+              else if( this.tgtXv == 0 )
+              {
+                if( this.chopperDir == c.DIR_LEFT )
+                  this.chopperDir = c.DIR_FWD;
+                else if( this.chopperDir == c.DIR_FWD )
+                  this.chopperDir = c.DIR_RIGHT;
+                else
+                  this.tgtXv += c.MAX_C_X_VEL / 2;
+              }
+              else
+              {
+                this.tgtXv += c.MAX_C_X_VEL / 2;
+                if( this.tgtXv > c.MAX_C_X_VEL )
+                  this.tgtXv = c.MAX_C_X_VEL;
+              }
+
+            }
             break;
           
           case "ArrowLeft":
-            this.tgtXVelocity--;
-            if( this.tgtXVelocity < -c.MAX_X_VEL )
-              this.tgtXVelocity = -c.MAX_X_VEL;
-  
+            if( this.p.y > 0 )
+            {
+              if( this.tgtXv > 0 )
+              {
+                this.tgtXv -= c.MAX_C_X_VEL / 2;
+                if( this.tgtXv < 0 )
+                  this.tgtXv = 0;
+              }
+              else if( this.tgtXv == 0 )
+              {
+                if( this.chopperDir == c.DIR_RIGHT )
+                  this.chopperDir = c.DIR_FWD;
+                else if( this.chopperDir == c.DIR_FWD )
+                  this.chopperDir = c.DIR_LEFT;
+                else
+                  this.tgtXv -= c.MAX_C_X_VEL / 2;
+              }
+              else
+              {
+                this.tgtXv -= c.MAX_C_X_VEL / 2;
+                if( this.tgtXv < -c.MAX_C_X_VEL )
+                  this.tgtXv = -c.MAX_C_X_VEL;
+              }
+            }
             break;
 
           case "ArrowUp":
-            this.tgtYVelocity++;
-            if( this.tgtYVelocity > c.MAX_Y_VEL )
-              this.tgtYVelocity = c.MAX_Y_VEL;
+            this.tgtYv += c.MAX_C_Y_VEL / 2;
+            if( this.tgtYv > c.MAX_C_Y_VEL )
+              this.tgtYv = c.MAX_C_Y_VEL;
             break;
 
           case "ArrowDown":
-            this.tgtYVelocity--;
-            if( this.tgtYVelocity < c.MIN_Y_VEL )
-              this.tgtYVelocity = c.MIN_Y_VEL;
+            this.tgtYv -= c.MAX_C_Y_VEL / 2;
+            if( this.tgtYv < c.MIN_Y_VEL )
+              this.tgtYv = c.MIN_Y_VEL;
             break;
 
-          case "w":
-            this.rotVertex.y -= 1; this.logVertex = true; break
-          case "s":
-            this.rotVertex.y += 1; this.logVertex = true; break
-          case "a":
-            this.rotVertex.x -= 1; this.logVertex = true; break
-          case "d":
-            this.rotVertex.x += 1; this.logVertex = true; break
-          // // Don't spawn weapons here. Let's keep that loosely coupled. Spawn in update().
-          // case "a": // missle A
-          //   if( this.curAmount[ c.RESOURCE_SM ] > 0 )
-          //   {
-          //     this.weapon = c.WEAPON_SMALL_MISSILE;
-          //     this.curAmount[ c.RESOURCE_SM ] -= 1;
-          //   }
+          // case "w":
+          //   this.rotVertex.y -= 1; this.logVertex = true; break
+          // case "s":
+          //   this.rotVertex.y += 1; this.logVertex = true; break
+          // case "a":
+          //   this.rotVertex.x -= 1; this.logVertex = true; break
+          // case "d":
+          //   this.rotVertex.x += 1; this.logVertex = true; break
+          // Don't spawn weapons here. Let's keep that loosely coupled. Spawn in update().
+          case "a": // missle A
+            //if( this.curAmount[ c.RESOURCE_SM ] > 0 )
+            {
+              this.weapon = "MissileA";
+              this.curAmount[ c.RESOURCE_SM ] -= 1;
+            }
+            break;
 
-          // case "b": // missle b
-          //   if( this.curAmount[ c.RESOURCE_LM ] > 0 )
-          //   {
-          //     this.curAmount[ c.RESOURCE_LM ] -= 1;
-          //     this.weapon = c.WEAPON_LARGE_MISSILE;
-          //   }
-          // case "c": // bomb
-          //   if( this.curAmount[ c.RESOURCE_BOMB ] > 0 )
-          //   {
-          //     this.curAmount[ c.RESOURCE_BOMB ] -= 1;
-          //     this.weapon = c.WEAPON_BOMB;
-          //   }
-          //   break;
+          case "b": // missle b
+            //if( this.curAmount[ c.RESOURCE_LM ] > 0 )
+            {
+              this.weapon = "MissileB";
+              this.curAmount[ c.RESOURCE_LM ] -= 1;
+            }
+            break;
 
-          // case "d": // bullet
-          //   if( this.curAmount[ c.RESOURCE_BULLET ] > 0 && this.bulletRdyCounter <= 0 )
-          //   {
-          //     this.curAmount[ c.RESOURCE_BULLET ] -= 1;
-          //     this.weapon = c.WEAPON_BULLET;
-          //     this.bulletRdyCounter = c.BULLET_WAIT_TIME;
-          //   }
+          case "c": // bomb
+            if( this.curAmount[ c.RESOURCE_BOMB ] > 0 )
+            {
+              this.weapon = "Bomb";
+              this.curAmount[ c.RESOURCE_BOMB ] -= 1;
+            }
+            break;
+
+          case "d": // bullet
+//            if( this.curAmount[ c.RESOURCE_BULLET ] > 0 && this.bulletRdyCounter <= 0 )
+            {
+              this.weapon = "Bullet";
+              this.curAmount[ c.RESOURCE_BULLET ] -= 1;
+              this.bulletRdyCounter = c.BULLET_WAIT_TIME;
+            }
+
           }
         break;
 
@@ -162,99 +208,86 @@ export class Helicopter
     }
   }
 
-  // Get actual desired X velocity from tgtXVelocity
-  // tgtXVelocity of -1 0 1 all mean don't move, -1 means face left, 0 fwd, 1 right.
-  getTgtXVel()
-  {
-    let tgtVel = this.tgtXVelocity;
-    if( Math.abs( tgtVel ) <= 1 )
-      return 0;
-    else
-      return ( tgtVel > 0 ) ? tgtVel - 1 : tgtVel + 1;
-  }
+  // Get actual desired X velocity from tgtXv
+  // tgtXv of -1 0 1 all mean don't move, -1 means face left, 0 fwd, 1 right.
+  // getTgtXVel()
+  // {
+  //   let tgtVel = this.tgtXv;
+  //   if( Math.abs( tgtVel ) <= 1 )
+  //     return 0;
+  //   else
+  //     return ( tgtVel > 0 ) ? tgtVel - 1 : tgtVel + 1;
+  // }
 
-  update( tstamp )
+  update( deltaMs )
   {
-    let rotorSpeed = 1; // default, slow spin
-
     if( this.curAmount[ c.RESOURCE_SI ] < 0 )
     {
       this.e.qMessage( c.MSG_CHOPPER_DESTROYED, this );
       return False;
     }
 
+    if( this.weapon )
+    {
+      let direction = setRelTheta( ( this.chopperDir == c.DIR_RIGHT ) ? 0 : c.PI, this.bodyAngle )
+
+      if( this.chopperDir != c.DIR_FWD )
+        this.e.addObject( new Missile( this.e,
+                                      this.weapon,
+                                      new Point( this.p.x, this.p.y, 1 ),
+                                      direction,
+                                      this.v ) );
+      this.weapon = undefined;
+    }
+
     if( this.bulletRdyCounter > 0 )
-      this.bulletRdyCounter -= tstamp;
+      this.bulletRdyCounter -= deltaMs;
 
     // Accelerate to target velocities
-    // this.vx -1,0,1 mean not moving but facing left, fwd, right
-    let tgtX = this.getTgtXVel();
+    // this.v.xx -1,0,1 mean not moving but facing left, fwd, right
 
-    if( this.vx < tgtX )
-      this.vx += tstamp / 1000;
-    else if( this.vx > tgtX )
-      this.vx -= tstamp / 1000;
-    if( Math.abs( this.vx - tgtX ) < .01 )
-      this.vx = tgtX;
+    if( this.v.xc < this.tgtXv )
+      this.v.xc += deltaMs / 100;
+    else if( this.v.xc > this.tgtXv )
+      this.v.xc -= deltaMs / 100;
+    if( Math.abs( this.v.xc - this.tgtXv ) < .05 )
+      this.v.xc = this.tgtXv;
 
-    if( this.vy < this.tgtYVelocity )
-      this.vy += tstamp / 200;
-    else if ( this.vy > this.tgtYVelocity )
-      this.vy -= tstamp / 200;
-    if( Math.abs( this.vy - this.tgtYVelocity ) < .01 )
-      this.vy = this.tgtYVelocity;
+    if( this.v.yc < this.tgtYv )
+      this.v.yc += deltaMs / 100;
+    else if( this.v.yc > this.tgtYv )
+      this.v.yc -= deltaMs / 100;
+    if( Math.abs( this.v.yc - this.tgtYv ) < .05 )
+      this.v.yc = this.tgtYv;
 
     // translate
-    this.p.y += this.vy / 10;
-    this.p.x += this.vx / 5;
+    this.p.y += this.v.yc * deltaMs / 1000;
+    this.p.x += this.v.xc * deltaMs / 1000;
 
     if( this.p.y < 0 )
+    {
+      this.bodyAngle = setRelTheta( this.bodyAngle, 0 );
+      this.tgtXv = 0;
+      this.tgtYv = 0;
       this.p.y = 0;
+      this.v.xc = 0;
+      this.v.yc = 0;
+    }
 
     // figure out angle. + is down' from level. Accel +20deg, maintain dir +10, decel -10, idle 0
     const a20 = -.35; // 20 degres in radians.
     const a10 = -.175;
     let tgtAngle = 0.0;
-    let tgtVel = this.getTgtXVel();
 
-    if( this.vx > c.EFFECTIVE_ZERO ) // going right
+    if( Math.abs( this.v.xc - this.tgtXv ) < c.EFFECTIVE_ZERO )
     {
-      this.chopperDir = c.DIRECTION_RIGHT;
-
-      if( Math.abs( this.vx - tgtVel ) < c.EFFECTIVE_ZERO )
+      if( Math.abs( this.tgtXv ) > 0)
         tgtAngle = a10; // maintain speed. We're at tgtVel
-      else if( this.vx < tgtVel )
-        tgtAngle = a20; // accellerate
-      else
-        tgtAngle = -a10; // slow down
     }
-    else if( this.vx < -c.EFFECTIVE_ZERO ) // going left
-    {
-      this.chopperDir = c.DIRECTION_LEFT;
-
-      if( Math.abs( this.vx - tgtVel ) < c.EFFECTIVE_ZERO )
-        tgtAngle = a10; 
-      else if( this.vx > tgtVel )
-        tgtAngle = a20; 
-      else
-        tgtAngle = -a10; 
-    }
-    else // not moving
-    {
-      if( this.tgtXVelocity > .1 )
-        this.chopperDir = c.DIRECTION_RIGHT;
-      else if( this.tgtXVelocity < -.1 )
-        this.chopperDir = c.DIRECTION_LEFT;
-      else
-        this.chopperDir = c.DIRECTION_FORWARD;
-
-      tgtAngle = 0;
-    }
-
-    if( tgtAngle == a10 )
-      rotorSpeed = 2;
-    else if( tgtAngle == a20 )
-      rotorSpeed = 3;
+    else if( this.chopperDir == c.DIR_RIGHT )
+      tgtAngle = ( this.v.xc < this.tgtXv ) ? a20 : -a10;
+    else if( this.chopperDir == c.DIR_LEFT ) // going left
+      tgtAngle = ( this.v.xc > this.tgtXv ) ? a20 : -a10;
 
     if( this.bodyAngle < tgtAngle - c.EFFECTIVE_ZERO )
       this.bodyAngle += .02; // tbd, adjust for timedelta
@@ -262,10 +295,13 @@ export class Helicopter
       this.bodyAngle -= .02;
 
     // Spin the rotors
-    if( ( this.tgtXVelocity > 1 ) || ( this.tgtYVelocity > 0 ) )
-      rotorSpeed = 2; // fast
+    let rotorSpeed = 1; // default, slow spin
 
-    this.rotorTheta += rotorSpeed * tstamp / 100;
+    if( tgtAngle == a20 )
+      rotorSpeed = 3;
+    else if( ( tgtAngle == a10 ) || ( this.tgtYv > 0 ) )
+      rotorSpeed = 2;
+    this.rotorTheta += rotorSpeed * deltaMs / 100;
     if( this.rotorTheta > 2 * c.PI )
       this.rotorTheta -= 2 * c.PI ;
   }
@@ -278,51 +314,42 @@ export class Helicopter
     xlate.x = 0;
     xlate.y = 0;
 
-    hImg = ( this.chopperDir == c.DIRECTION_FORWARD ) ? Helicopter.heloForward : Helicopter.heloL;
+    hImg = ( this.chopperDir == c.DIR_FWD ) ? Helicopter.heloForward : Helicopter.heloR;
 
-    const hWidth  = hImg.width  * this.imgFactor;
-    const hHeight = hImg.height * this.imgFactor;
+    const w = hImg.width * this.imgFactor;
+    const h = hImg.height * this.imgFactor;
 
-    this.rotVertex.y = hHeight * -.22;
+    this.rotVertex.y = h * -.22;
     xlate.y = 18;
 
-    if( this.chopperDir == c.DIRECTION_FORWARD )
-      this.rotVertex.x = hWidth * -.012;
+    if( this.chopperDir == c.DIR_FWD )
+      this.rotVertex.x = w * -.012;
     else
     {
-      this.rotVertex.x = hWidth * -.16;
-      xlate.x = 20;
+      this.rotVertex.x = w * .16;
+      xlate.x = -20;
     }
 
-    // if( this.logVertex )
-    // {
-    //   if( this.rotVertex.x != 0 && this.rotVertex.y != 0 )
-    //     console.log( this.rotVertex.x / hWidth, this.rotVertex.y / hHeight );
-    //   this.logVertex = false; 
-    // }
-
     this.e.ctx.translate( p.x + this.rotVertex.x + xlate.x, p.y + this.rotVertex.y - xlate.y );
-
-    if( this.chopperDir == c.DIRECTION_RIGHT ) // right? flip image
+    if( this.chopperDir == c.DIR_LEFT )
       this.e.ctx.scale( -1, 1 );
 
-    this.e.ctx.rotate( this.bodyAngle );
+    this.e.ctx.rotate( -this.bodyAngle );
     this.e.ctx.lineWidth = 2;
+
     // tail rotor. Draw behind body, looks cleaner.
-    if( this.chopperDir != c.DIRECTION_FORWARD )
+    if( this.chopperDir != c.DIR_FWD )
     {
       this.e.ctx.strokeStyle = 'black';
       this.e.ctx.beginPath();
-      let t = -this.rotorTheta * 2;
+      let t = this.rotorTheta * 2;
       this.e.ctx.lineWidth = 2;
-      this.e.ctx.moveTo( 90 - 10 * Math.cos( t ), -10 - 10 * Math.sin( t ) );
-      this.e.ctx.lineTo( 90 + 10 * Math.cos( t ), -10 + 10 * Math.sin( t ) );
+      this.e.ctx.moveTo( -90 - 10 * Math.cos( t ), -10 - 10 * Math.sin( t ) );
+      this.e.ctx.lineTo( -90 + 10 * Math.cos( t ), -10 + 10 * Math.sin( t ) );
       this.e.ctx.stroke();
     }
 
-    this.e.ctx.drawImage( hImg,
-                          -hWidth / 2 - this.rotVertex.x, -hHeight / 2 - this.rotVertex.y,
-                          hWidth, hHeight );
+    this.e.ctx.drawImage( hImg, -w / 2 - this.rotVertex.x, -h / 2 - this.rotVertex.y, w, h );
 
     if( this.e.debugCoords ) // draw the vertex
     {
@@ -335,7 +362,7 @@ export class Helicopter
       this.e.ctx.stroke();
     }
 
-    // rotor. Need to rotate the rotor since we're already using .rotate() to place it on the Helo
+    // rotor
     const rLen = 80 * Math.cos( this.rotorTheta );
     this.e.ctx.strokeStyle = 'black';
     this.e.ctx.beginPath();
@@ -351,11 +378,11 @@ export class Helicopter
     this.e.ctx.fillStyle = 'black';
     this.e.ctx.beginPath();
     var offset = 0;
-    if( this.chopperDir == c.DIRECTION_LEFT )
+    if( this.chopperDir == c.DIR_RIGHT )
       offset = 10;
-    else if( this.chopperDir == c.DIRECTION_RIGHT )
+    else if( this.chopperDir == c.DIR_LEFT )
       offset = -10;
-    this.e.ctx.ellipse( p.x + offset, projShadow.y, hWidth/3, 2, 0, 0, 2 * c.PI )
+    this.e.ctx.ellipse( p.x + offset, projShadow.y, w/3, 2, 0, 0, 2 * c.PI )
     this.e.ctx.fill();
 
     // fuel

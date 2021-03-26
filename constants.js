@@ -12,9 +12,25 @@ export const c =
 
   MAX_ALTITUDE : 100,
 
-  MAX_X_VEL : 3, // 0 means fwd, 1 means right not moving, -1 means left not moving
-  MAX_Y_VEL : 4,
-  MIN_Y_VEL : -2,
+  MAX_C_X_VEL : 20, // max chopper velocities.
+  MAX_C_Y_VEL : 10,
+  MIN_C_Y_VEL : -5,
+
+  MAX_JEEP_VEL : 10,
+  MAX_TRANS1_VEL : 6,
+  MAX_TRANS2_VEL : 4,
+  MAX_TRUCK_VEL : 8,
+  MAX_TANK_VEL : 4,
+
+  MAX_BOMBER1_VEL : 15,
+  MAX_BOMBER2_VEL : 20,
+  MAX_FIGHTER1_VEL : 25,
+  MAX_FIGHTER1_VEL : 30,
+
+  MAX_BULLET_VEL : 50,
+  MAX_MISSILEA_VEL : 40,
+  MAX_MISSILEB_VEL : 45,
+
 
   SCREEN_WIDTH : 1600,
   SCREEN_HEIGHT : 800,
@@ -35,8 +51,8 @@ export const c =
   // World geometry
   HORIZON_DISTANCE : 10000,
 
-  CAM_FOV_X   : 45.0/360.0 * 6.2818,
-  CAM_FOV_Y   : 30.0/360.0 * 6.2818,
+  CAM_FOV_X   : 45.0 / 360.0 * 6.2818,
+  CAM_FOV_Y   : 30.0 / 360.0 * 6.2818,
   CAM_Z       : 100, // Distance behind projection plane, NOTE: should be negative in theory.
 
   DISPLAY_CONTROL_TIME : 1000, // How many ms to display the control "stick" position after movement
@@ -45,36 +61,9 @@ export const c =
   BULLET_LIFETIME   : 2000, // ms.
   SHOW_SI_COUNT     : 2000, // How long to show an enemies structural integrity in ms
 
-  DIRECTION_LEFT    : 0,
-  DIRECTION_RIGHT   : 1,
-  DIRECTION_FORWARD : 2,
-
-  // Movement per update
-  TANK_DELTA        :  .2,
-  CHOPPER_Y_DELTA   :  .01,
-  CHOPPER_X_DELTA   :  .02,
-  JEEP_DELTA        :  .4,
-  TRUCK_DELTA       :  .28,
-  TRANSPORT1_DELTA  :  .2,
-  TRANSPORT2_DELTA  :  .25,
-  BOMBER1_DELTA     :  .5,
-  BOMBER2_DELTA     :  .6,
-  FIGHTER_DELTA     :  .9,
-  BULLET_DELTA      : 1.5,
-
-  // Active object types
-  OBJECT_TYPE_NONE        :  0,
-  OBJECT_TYPE_BASE        :  1,
-  OBJECT_TYPE_CHOPPER     :  2,
-
-  OBJECT_TYPE_FIRST_ENEMY :  3,
-  OBJECT_TYPE_JEEP        :  3, // Put all enemies contiguous
-  OBJECT_TYPE_TRANSPORT1  :  4,
-  OBJECT_TYPE_TRANSPORT2  :  5,
-  OBJECT_TYPE_TRUCK       :  6,
-  OBJECT_TYPE_JET         :  7,
-  OBJECT_TYPE_TANK        :  8,
-  OBJECT_TYPE_LAST_ENEMY  :  8,
+  DIR_LEFT    : 0,
+  DIR_RIGHT   : 1,
+  DIR_FORWARD : 2,
 
   OBJECT_TYPE_WEAPON      :  9, // Weapon I fired
   OBJECT_TYPE_E_WEAPON    : 10, // Weapon enemy fired
@@ -102,7 +91,8 @@ export const c =
   SI_TRANSPORT1 : 40.0,
   SI_TRANSPORT2 : 60.0,
   SI_TANK       : 150.0,
-  SI_FIGHTER    : 15.0,
+  SI_FIGHTER1   : 15.0,
+  SI_FIGHTER2   : 10.0,
   SI_BOMBER1    : 70.0,
   SI_BOMBER2    : 30.0,
   SI_BUILDING   : 50.0,
@@ -114,7 +104,8 @@ export const c =
   POINTS_TRANSPORT  : 15,
   POINTS_TANK       : 15,
   POINTS_BOMBER     : 20,
-  POINTS_FIGHTER    : 50,
+  POINTS_FIGHTER1   : 50,
+  POINTS_FIGHTER2   : 100,
   POINTS_E_BUILDING : 10, // enemy base building.
   POINTS_E_BASE     : 50,
   POINTS_BUILDING   : 15, // city buildings not bombed after level complete
@@ -152,10 +143,4 @@ export const c =
   MSG_SOLDIERS_TO_CITY      : 21,
   MSG_RESOURCES_AVAIL       : 22, // param A list of Resources
 
-  // Tank operational states
-  TANK_STATE_MOVE_TO_ATK  : 0,  // go to building
-  TANK_STATE_ATK_CHOPPER  : 1,  // Helo present. Engage
-  TANK_STATE_SHELLING     : 2,  // in position
-  TANK_STATE_RELOAD       : 3,  // out of weapons, go back to reload.
-  TANK_STATE_GUARD        : 4   // Wait here until the chopper comes local
 };

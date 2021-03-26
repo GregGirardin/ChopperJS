@@ -1,10 +1,5 @@
 import { c } from './constants.js';
-import { Point, projection } from './utils.js';
-
-function randInt( min, max )
-{
-  return Math.floor( Math.random() * ( max - min ) ) + min;
-}
+import { Point, projection, randInt } from './utils.js';
 
 // background stuff
 export class SkyGround
@@ -15,16 +10,15 @@ export class SkyGround
 
   constructor( e )
   {
-    this.p = new Point( 0, 0, c.HORIZON_DISTANCE );
-    this.oType = c.OBJECT_TYPE_NONE;
     this.e = e; // game engine
+    this.oType = "SkyGround";
+    this.p = new Point( 0, 0, c.HORIZON_DISTANCE );
 
     if( !SkyGround.img )
     {
       SkyGround.img = new Image();
       SkyGround.img.src = "./images/backgrounds/cloud2.png";
     }
-
   }
   
   draw( p )
@@ -33,74 +27,62 @@ export class SkyGround
 
     hProj = projection( this.e.camera, this.p );
     
-    // sky
     this.e.ctx.drawImage( SkyGround.img,
-                          p.x - SkyGround.hWidth / 2,
-                          p.y - SkyGround.hHeight,
-                          SkyGround.hWidth,
-                          SkyGround.hHeight );
+                          p.x - SkyGround.hWidth / 2, p.y - SkyGround.hHeight,
+                          SkyGround.hWidth, SkyGround.hHeight );
 
-    // ground
-    this.e.ctx.fillStyle = 'green';
+    this.e.ctx.fillStyle = 'green'; // ground
     this.e.ctx.fillRect( 0, hProj.y, c.SCREEN_WIDTH, c.SCREEN_HEIGHT );
   }
 }
 
-export class MountainImg
+export class Mtn
 {
-  static img;
-  static hWidth = 3000;
-  static hHeight = 250;
+  static i;
+  static w = 3000;
+  static h = 250;
 
   constructor( e, x, y, z )
   {
     this.e = e; // game engine
+    this.oType = "Mountain";
     this.p = new Point( x, y, z );
-    this.oType = c.OBJECT_TYPE_NONE;
 
-    if( !MountainImg.img )
+    if( !Mtn.i )
     {
-      MountainImg.img = new Image();
-      MountainImg.img.src = "./images/backgrounds/Mountains1.gif";
+      Mtn.i = new Image();
+      Mtn.i.src = "./images/backgrounds/Mountains1.gif";
     }
   }
 
   draw( p )
   {
-    this.e.ctx.drawImage( MountainImg.img,
-                          p.x - MountainImg.hWidth / 2,
-                          p.y - MountainImg.hHeight,
-                          MountainImg.hWidth,
-                          MountainImg.hHeight );
+    this.e.ctx.drawImage( Mtn.i, p.x - Mtn.w / 2, p.y - Mtn.h, Mtn.w, Mtn.h );
   }
 }
 
-export class HillImg
+export class Hill
 {
-  static img;
-  static hWidth = 4000;
-  static hHeight = 150;
+  static i;
+  static w = 4000;
+  static h = 150;
 
   constructor( e, x, y, z )
   {
     this.e = e; // game engine
+    this.oType = "Hill";
     this.p = new Point( x, y, z );
-    this.oType = c.OBJECT_TYPE_NONE;
 
-    if( !HillImg.img )
+    if( !Hill.i )
     {
-      HillImg.img = new Image();
-      HillImg.img.src = "./images/backgrounds/Mountains2.gif";
+      Hill.i = new Image();
+      Hill.i.src = "./images/backgrounds/Mountains2.gif";
     }
   }
 
   draw( p )
   {
-    this.e.ctx.drawImage( HillImg.img,
-                          p.x - HillImg.hWidth / 2,
-                          p.y - HillImg.hHeight,
-                          HillImg.hWidth,
-                          HillImg.hHeight );
+    this.e.ctx.drawImage( Hill.i, p.x - Hill.w / 2, p.y - Hill.h, Hill.w, Hill.h );
   }
 }
 
@@ -110,18 +92,20 @@ export class Cloud
 
   constructor( e, x, y, z )
   {
-    this.e = e; // game engine
+    this.e = e;
+    this.oType = "Cloud";
     this.p = new Point( x, y, z );
-    this.oType = c.OBJECT_TYPE_NONE;
-
-    this.imgFactor = 2;
+    this.firstTime = true;
+    this.imgFactor = 1;
     if( z > 5000 )
-      this.imgFactor = .2;
+      this.imgFactor = .1;
     else if( z > 2000 )
-      this.imgFactor = .5;
+      this.imgFactor = .25;
     else if ( z > 1000 )
-      this.imgFactor = 1;
-
+      this.imgFactor = .5;
+    
+    this.checkPosTimer = 1000 + x; // check to see if this cloud is off the screen and move back right
+                                    // use x to randomize so we don't do all checks at once.
     if( !Cloud.img )
     {
       Cloud.img = new Image();
@@ -129,20 +113,51 @@ export class Cloud
     }
   }
 
-  update( delta ) 
+  update( deltaMs ) 
   {
-    this.p.x -= 2/delta;
-    // tbd. Check for wrap
+    this.p.x -= 2/deltaMs;
+
+    this.checkPosTimer -= deltaMs;
+    if( this.checkPosTimer < 0 )
+    {
+      this.checkPosTimer = 5000;
+      if( this.p.x < c.MIN_WORLD_X )
+      {
+        this.checkPosTimer = 1000;
+
+        let p = projection( this.e.camera, this.p );
+        if( p.x < -this.w / 2 )
+        {
+          this.p.x = c.MAX_WORLD_X;
+          while( 1 )
+          {
+            p = projection( this.e.camera, this.p );
+            if( p.x > c.SCREEN_WIDTH + this.w / 2 )
+              break;
+            this.p.x += 1000;
+          }
+        }
+      }
+    }
     return true;
   }
 
   draw( p )
   {
-    this.e.ctx.drawImage( Cloud.img,
-                          p.x - Cloud.img.width * this.imgFactor / 2,
-                          p.y - Cloud.img.height * this.imgFactor,
-                          Cloud.img.width * this.imgFactor,
-                          Cloud.img.height * this.imgFactor );
+    if( this.firstTime ) // tbd, fix. Wait for load.
+    {
+      this.firstTime = false;
+      this.w = Cloud.img.width * this.imgFactor;
+      this.h = Cloud.img.height * this.imgFactor;
+    }
+    this.e.ctx.drawImage( Cloud.img, p.x - this.w / 2, p.y - this.h / 2, this.w, this.h );
+
+    // If we want the clouds to have shadows.
+    // const projShadow = projection( this.e.camera, new Point( this.p.x, 0, this.p.z ) );
+    // this.e.ctx.fillStyle = 'black';
+    // this.e.ctx.beginPath();
+    // this.e.ctx.ellipse( p.x, projShadow.y, this.w / 3, 2, 0, 0, 2 * c.PI )
+    // this.e.ctx.fill();
   }
 }
 
@@ -153,9 +168,10 @@ export class Rock
   constructor( e, x, y, z )
   {
     this.e = e; // game engine
+    this.oType = "Rock";
     this.p = new Point( x, y, z );
-    this.oType = c.OBJECT_TYPE_NONE;
-    this.imgFactor = .5;
+    this.imgFactor = randInt( 2, 5 ) / 2;
+    this.firstTime = true;
 
     if( !Rock.img )
     {
@@ -166,11 +182,13 @@ export class Rock
 
   draw( p )
   {
-    this.e.ctx.drawImage( Rock.img,
-                          p.x - Rock.img.width * this.imgFactor / 2,
-                          p.y - Rock.img.height * this.imgFactor,
-                          Rock.img.width * this.imgFactor,
-                          Rock.img.height * this.imgFactor );
+    if( this.firstTime ) // tbd, fix. Wait for load.
+    {
+      this.firstTime = false;
+      this.w = Rock.img.width * this.imgFactor;
+      this.h = Rock.img.height * this.imgFactor;
+    }
+    this.e.ctx.drawImage( Rock.img, p.x - this.w / 2, p.y - this.h, this.w, this.h );
   }
 }
 
@@ -181,9 +199,10 @@ export class Grass
   constructor( e, x, y, z )
   {
     this.e = e;
+    this.oType = "Grass";
     this.p = new Point( x, y, z );
-    this.oType = c.OBJECT_TYPE_NONE;
-    this.imgFactor = .5;
+    this.imgFactor = randInt( 1, 2 ) / 2;
+    this.firstTime = true;
 
     if( !Grass.img )
     {
@@ -194,11 +213,13 @@ export class Grass
 
   draw( p )
   {
-    this.e.ctx.drawImage( Grass.img,
-                          p.x - Grass.img.width * this.imgFactor / 2,
-                          p.y - Grass.img.height * this.imgFactor,
-                          Grass.img.width * this.imgFactor,
-                          Grass.img.height * this.imgFactor );
+    if( this.firstTime ) // tbd, fix. Wait for load.
+    {
+      this.firstTime = false;
+      this.w = Grass.img.width * this.imgFactor;
+      this.h = Grass.img.height * this.imgFactor;
+    }
+    this.e.ctx.drawImage( Grass.img, p.x - this.w / 2, p.y - this.h, this.w, this.h );
   }
 }
 
@@ -209,8 +230,9 @@ export class Tree
   constructor( e, x, y, z )
   {
     this.e = e;
+    this.oType = "Tree";
     this.p = new Point( x, y, z );
-    this.oType = c.OBJECT_TYPE_NONE;
+    this.firstTime = true;
     this.imgFactor = .5;
     if( z > 1000 )
       this.imgFactor = .05;
@@ -227,25 +249,27 @@ export class Tree
 
   draw( p )
   {
-    this.e.ctx.drawImage( Tree.img,
-                          p.x - Tree.img.width * this.imgFactor / 2,
-                          p.y - Tree.img.height * this.imgFactor,
-                          Tree.img.width * this.imgFactor,
-                          Tree.img.height * this.imgFactor );
+    if( this.firstTime ) // tbd, fix. Wait for load.
+    {
+      this.firstTime = false;
+      this.w = Tree.img.width * this.imgFactor;
+      this.h = Tree.img.height * this.imgFactor;
+    }
+    this.e.ctx.drawImage( Tree.img, p.x - this.w / 2, p.y - this.h, this.w, this.h );
   }
 }
 
 export class Base
 {
   static img;
-  static imgFactor = .75;
 
   constructor( e, x, y, z, label=undefined )
   {
     this.e = e;
+    this.oType = "Base";
     this.p = new Point( x, y, z );
-    this.oType = c.OBJECT_TYPE_BASE;
     this.label = label;
+    this.imgFactor = .75;
 
     if( !Base.image )
     {
@@ -254,21 +278,21 @@ export class Base
     }
   }
 
-  update( )
+  update( deltaMs )
   {
     return true;
   }
 
   draw( p )
   {
-    this.e.ctx.drawImage( Base.img,
-                          p.x - Base.img.width * Base.imgFactor / 2,
-                          p.y - Base.img.height * Base.imgFactor + 50,
-                          Base.img.width * Base.imgFactor,
-                          Base.img.height * Base.imgFactor );
+    {
+      this.w = Base.img.width * this.imgFactor;
+      this.h = Base.img.height * this.imgFactor;
+    }
+
+    this.e.ctx.drawImage( Base.img, p.x - this.w / 2, p.y - this.h + 50, this.w, this.h );
   }
 }
-
 
 class CityBuilding
 {
@@ -298,10 +322,10 @@ class CityBuilding
   constructor( e, xPos, buildIx, label=undefined )
   {
     this.e = e;
+    this.oType = "CityBuilding";
     this.p = new Point( xPos, 0, 2 );
     this.label = label;
     this.buildIx = buildIx;
-    this.oType = c.OBJECT_TYPE_BUILDING;
     this.si = c.SI_BUILDING;
     this.colRect = undefined; // tbd
     this.imgFactor = 1.5;
@@ -406,7 +430,7 @@ class EBuilding // from miscBuildings.gif
   constructor( e, xPos, buildIx, label=undefined )
   {
     this.e = e;
-    this.oType = c.OBJECT_TYPE_E_BUILDING;
+    this.oType = "EnemyBuilding";
     this.p = new Point( xPos, 0, 3 );
     this.colRect = undefined; // tbd
     this.label = label;
@@ -470,7 +494,7 @@ export function buildEBase( e, x, bCount, label=undefined )
     buildIx = randInt( 0, EBuilding.numBuildings - 1 );
     buildObj = new EBuilding( e, x, buildIx, label="Enemy" )
     e.addObject( buildObj  );
-    x += 4; // adjust pixels to world coors.
+    x += 4; // adjust pixels to world coords.
   }
 }
 
@@ -481,19 +505,14 @@ export class Rectangle
     this.e = e;
     this.p = p;
     this.v = v; // the vertex we wish to rotate around. (0,0) is the center
-    this.oType = c.OBJECT_TYPE_NONE;
+    this.oType = "Rectangle";
     this.imgFactor = 1;
-    this.width = w;
-    this.height = h;
+    this.w = w;
+    this.h = h;
     this.angle = 0;
   }
 
-  update( tstamp )
-  {
-    // this.angle += tstamp / 200;
-    // this.v.y += .2;
-    // this.p.x += .2;
-  }
+  update( tstamp ) { }
 
   draw( p )
   {
@@ -502,9 +521,9 @@ export class Rectangle
     this.e.ctx.rotate( this.angle );
 
     this.e.ctx.beginPath();
-    this.e.ctx.rect( -this.width/2 - this.v.x,
-                     -this.height/2 + this.v.y,
-                      this.width, this.height );
+    this.e.ctx.rect( -this.w/2 - this.v.x,
+                     -this.w/2 + this.v.y,
+                      this.w, this.h );
     this.e.ctx.stroke();
 
     // draw vertex that we want to rotate around, 0,0 is the center of the object.
@@ -517,5 +536,4 @@ export class Rectangle
     // Reset transformation matrix
     this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
   }
-
 }

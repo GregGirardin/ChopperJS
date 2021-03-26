@@ -1,5 +1,5 @@
 import { c } from './constants.js';
-import { Point, Vector, projection, addAngle, dirFromAngle, setRelTheta } from './utils.js';
+import { Point, projection, addAngle, dirFromAngle, setRelTheta, getRelTheta, randInt } from './utils.js';
 
 // Okabes
 
@@ -7,7 +7,7 @@ export class Plane
 {
   static ticksPerImg = 100;
 
-  static Planes = // properties are planeTypes
+  static planes = // properties are planeTypes
   {
     Bomber1 : {
               image : undefined,
@@ -16,9 +16,12 @@ export class Plane
               siMax : c.SI_BOMBER1,
               bombs : 2,
               damage : 0,
-              imgFactor : .75,
+              imgFactor : .8,
               points : c.POINTS_BOMBER,
-              spd : 1
+              spd : c.MAX_BOMBER1_VEL,
+              adjTimeMs : 3000, // average time to recalculate ideal trajectory 
+              turnDelta : undefined, // How far from chopper do we get before we turn round (if this plane does that)
+              maxBodyAngle : .15
               },
     Bomber2 : {
               image : undefined,
@@ -27,42 +30,63 @@ export class Plane
               siMax : c.SI_BOMBER2,
               bombs : 3,
               damage : 0,
-              imgFactor : .6,
+              imgFactor : .7,
               points : c.POINTS_BOMBER,
-              spd : 1
-
+              spd : c.MAX_BOMBER2_VEL,
+              adjTimeMs : 3000, 
+              turnDelta : undefined,
+              maxBodyAngle : .15
               },
-    Fighter : {
+    Fighter1 : {
               image : undefined,
               src : "images/vehicles/Fighter.gif",
-              si : c.SI_FIGHTER,
-              siMax : c.SI_FIGHTER,
+              si : c.SI_FIGHTER1,
+              siMax : c.SI_FIGHTER1,
+              bombs : 0,
+              damage : 0,
+              imgFactor : .4,
+              points : c.POINTS_FIGHTER1,
+              spd : c.MAX_FIGHTER1_VEL,
+              adjTimeMs : 1500, 
+              turnDelta : 250,
+              maxBodyAngle : .2
+              },
+    Fighter2 : {
+              image : undefined,
+              src : "images/vehicles/Jet4.png",
+              si : c.SI_FIGHTER2,
+              siMax : c.SI_FIGHTER2,
               bombs : 0,
               damage : 0,
               imgFactor : .3,
-              points : c.POINTS_FIGHTER,
-              spd : 1.5
+              points : c.POINTS_FIGHTER2,
+              spd : c.MAX_FIGHTER2_VEL,
+              adjTimeMs : 1000, 
+              turnDelta : 100, // fast aggressive
+              maxBodyAngle : .25
               },
   }
 
 
-  constructor( e, planeType, x, y, dir=c.DIRECTION_LEFT  )
+  constructor( e, planeType, x, y, dir=c.DIR_LEFT  )
   {
     this.e = e;
-    this.planeType = planeType;
-    this.oType = Plane.Planes[ planeType ].si;
-    this.spd = Plane.Planes[ planeType ].spd;
-    this.p = new Point( x, y, 0 );
+    this.oType = planeType;
+    this.spd = Plane.planes[ planeType ].spd;
+    this.p = new Point( x, y, 2 );
+    this.target_y = y;
     this.time = 0;
-    this.showSICount = 0;
     this.bodyAngle = c.PI;
-    this.tgtBodyAngle = c.PI; // tbd
+    this.tgtBodyAngle = c.PI; // what angle do we want to be at, bodyAngle will adjust to this over a short time.
     this.nextAngleAdjustMs = 2000;
-    this.turnDelta = 300; // for fighers, when do they turn around.
 
-    if( !Plane.Planes.Bomber1.image )
+    this.turnDelta = Plane.planes[ planeType ].turnDelta; // for fighers, when do they turn around.
+    this.maxBodyAngle = Plane.planes[ planeType ].maxBodyAngle;
+    this.adjTimeMs = Plane.planes[ planeType ].adjTimeMs;
+
+    if( !Plane.planes.Bomber1.image )
     {
-      for( const[ k, o ] of Object.entries( Plane.Planes ) )
+      for( const[ k, o ] of Object.entries( Plane.planes ) )
       {
         o.image = new Image();
         o.image.src = o.src;
@@ -70,23 +94,20 @@ export class Plane
     }
 
     // tbd, wait for load.
-    // this.image = Plane.Planes[ this.planeType ].image;
-    // this.width = this.image.width * Plane.Planes[ this.planeType ].imgFactor;
-    // this.height = this.image.height * Plane.Planes[ this.planeType ].imgFactor;
+    // this.image = Plane.planes[ this.planeType ].image;
+    // this.width = this.image.width * Plane.planes[ this.planeType ].imgFactor;
+    // this.height = this.image.height * Plane.planes[ this.planeType ].imgFactor;
   }
 
   processMessage( message, param=undefined )
   {
     if( message == c.MSG_COLLISION_DET )
-    {
       if( param.oType == c.OBJECT_TYPE_WEAPON )
       {
-        this.showSICount = c.SHOW_SI_COUNT;
         this.si -= param.wDamage;
         if( this.si < 0 )
           this.e.addObject( new SpriteSheet( this.e, "Explosion1", this.p ) );
        }
-    }
   }
 
   update( deltaMs )
@@ -98,75 +119,84 @@ export class Plane
       return false;
     }
 
-    if( this.showSICount > 0 )
-      this.showSICount -= timestamp;
-
     if( dirFromAngle( this.bodyAngle ) != dirFromAngle( this.tgtBodyAngle )  )
-      this.bodyAngle = this.tgtBodyAngle; // changed direction
-    else if( dirFromAngle( this.bodyAngle ) == c.DIRECTION_RIGHT )
-      this.bodyAngle += ( this.bodyAngle < this.tgtBodyAngle ) ? .01 : -.01;
-    else
+      this.bodyAngle = this.tgtBodyAngle; // changed direction, just set it.
+    else if( dirFromAngle( this.bodyAngle ) == c.DIR_RIGHT )
     {
-      if( ( ( this.bodyAngle > 0 ) && ( this.tgtBodyAngle > 0 ) ) ||
-          ( ( this.bodyAngle < 0 ) && ( this.tgtBodyAngle < 0 ) ) )
-        this.bodyAngle = addAngle( this.bodyAngle, ( this.bodyAngle < this.tgtBodyAngle ) ? .01 : -.01 );
-      else if( ( this.bodyAngle < 0 ) && ( this.tgtBodyAngle > 0 ) )
-        this.bodyAngle = addAngle( this.bodyAngle, -.01 );
-      else if( ( this.bodyAngle > 0 ) && ( this.tgtBodyAngle < 0 ) )
-        this.bodyAngle = addAngle( this.bodyAngle, .01 );
+      if( Math.abs( this.bodyAngle - this.tgtBodyAngle ) < .1 )
+        this.bodyAngle = this.tgtBodyAngle; // close enough, set exactly.
       else
-        console.assert( 0 );
+        this.bodyAngle += ( this.bodyAngle < this.tgtBodyAngle ) ? .02 : -.02;
+    }
+    else // facing left
+    {
+      const tgtRel = getRelTheta( this.tgtBodyAngle );
+      const actRel = getRelTheta( this.bodyAngle );
+
+      if( Math.abs( tgtRel - actRel ) < .1 )
+        this.bodyAngle = this.tgtBodyAngle; // close, just set it.
+      else
+        this.bodyAngle = setRelTheta( this.bodyAngle, ( actRel < tgtRel ) ? actRel + .02 : actRel - .02 );
     }
 
-    let delta = ( this.spd * deltaMs ) / 50;
+    let delta = this.spd * deltaMs / 1000;
     this.p.x += delta * Math.cos( this.bodyAngle );
     this.p.y += delta * Math.sin( this.bodyAngle );
 
-    if( this.p.y < 1 )
-      this.p.y = 1;
-
-    // specific update stuff for the particular plane
+    // plane specific update
     switch( this.oType )
     {
-      case c.SI_BOMBER1:
-      case c.SI_BOMBER2:
-        return this.bomber_update( deltaMs );
-      case c.SI_FIGHTER:
-        return this.fighter_update( deltaMs );
+      case "Bomber1":
+      case "Bomber2":
+        return this.bomberUpdate( deltaMs );
+      case "Fighter1":
+      case "Fighter2":
+        return this.fighterUpdate( deltaMs );
     }
-
   }
-  // specific updates for different types of planes.
-  bomber_update( deltaMs )
-  {
-    return true;
 
-    if( Math.abs( this.p.y - this.target_y ) > .2 )
+  // specific updates for different types of planes.
+  bomberUpdate( deltaMs )
+  {
+    if( this.p.x < c.MIN_WORLD_X - 50 ) // To the left of the theater, turn around.
     {
-      if( this.p.y < this.target_y )
-        this.p.y += .1;
-      else if( this.p.y > this.target_y )
-        this.p.y -= .1;
+      this.target_y = randInt( 75, 100 );
+      this.tgtBodyAngle = 0; // go right
+      this.bodyAngle = this.tgtBodyAngle;
     }
-  
-    if( this.p.x < c.MIN_WORLD_X - 50 )
+    else if( this.p.x > c.MAX_WORLD_X + 100 )
     {
-      this.target_y = randInt( 50, 100 );
-      this.dir = DIRECTION_RIGHT;
-    }
-    else if( this.p.x > c.MAX_WORLD_X + 50 )
-    {
-      if( e.cityDestroyed )
+      if( this.e.cityDestroyed )
       {
-        e.addStatusMessage( "Bomber Left Theater" );
-        e.qMessage( c.MSG_ENEMY_LEFT_BATTLEFIELD, this );
+        this.e.addStatusMessage( "Bomber Left Theater" );
+        this.e.qMessage( c.MSG_ENEMY_LEFT_BATTLEFIELD, this );
         return false;
       }
-      this.target_y = randInt( 15, 25 );
-      this.dir = DIRECTION_LEFT;
-      this.bombs = 1;
+      this.target_y = randInt( 10, 30 );
+      this.tgtBodyAngle = c.PI; // go left
+      this.bodyAngle = this.tgtBodyAngle;
+    }
+    else
+    {
+      this.nextAngleAdjustMs -= deltaMs;
+      if( this.nextAngleAdjustMs < 0 )
+      {
+        this.nextAngleAdjustMs = this.adjTimeMs;
 
-      if( !e.time % 10 ) // don't need to do this every cycle.
+        // adjust angle to reach target y
+        if( Math.abs( this.p.y - this.target_y ) > .5 ) // not at target y
+        {
+          if( this.p.y < this.target_y )
+            this.tgtBodyAngle = setRelTheta( this.tgtBodyAngle, this.maxBodyAngle );
+          else
+            this.tgtBodyAngle = setRelTheta( this.tgtBodyAngle, -this.maxBodyAngle );
+          this.nextAngleAdjustMs = 200; // check often until at target y
+        }
+        else
+          this.tgtBodyAngle = setRelTheta( this.tgtBodyAngle, 0 ); // level off
+        
+        this.bombs = 0;
+
         if( this.bombs )  // See if there's a target
         {
           let o, index;
@@ -176,71 +206,52 @@ export class Plane
             if( o.oType == c.OBJECT_TYPE_BUILDING )
               if( Math.abs( o.p.x - this.p.x ) < 10 )
               {
-                e.addObject( new Bomb( this.p, this.v, oType = c.OBJECT_TYPE_E_WEAPON ) );
+                this.e.addObject( new Bomb( this.p, this.v, oType = c.OBJECT_TYPE_E_WEAPON ) );
                 this.bombs -= 1;
                 break;
               }
           }
         }
-      
-      this.p.move( this.v )
-
-      return(true );
+      }
     }
+    return(true );
   }
 
-  fighter_update( deltaMs )
+  fighterUpdate( deltaMs )
   {
-    let dir = dirFromAngle( this.bodyAngle );
-    if( ( this.p.x - this.e.chopper.p.x ) > this.turnDelta && ( dir == c.DIRECTION_RIGHT ) )
-      this.tgtBodyAngle = c.PI;
-    else if( ( this.p.x - this.e.chopper.p.x ) < -this.turnDelta && ( dir == c.DIRECTION_LEFT ) )
-      this.tgtBodyAngle = 0;
+    if( Math.abs( this.p.x - this.e.chopper.p.x ) > this.turnDelta ) // Need to turn around.
+      this.tgtBodyAngle = ( this.p.x > this.e.chopper.p.x ) ? c.PI : 0;
     else
     {
       this.nextAngleAdjustMs -= deltaMs;
       if( this.nextAngleAdjustMs < 0 )
       {
-        this.nextAngleAdjustMs = 1000;
+        this.nextAngleAdjustMs = this.adjTimeMs;
         if( this.p.y > this.e.chopper.p.y )
-          this.tgtBodyAngle = setRelTheta( this.bodyAngle, -.2 );
+          this.tgtBodyAngle = setRelTheta( this.bodyAngle, -this.maxBodyAngle );
         else if( this.p.y < this.e.chopper.p.y )
-          this.tgtBodyAngle = setRelTheta( this.bodyAngle, .2 );
+          this.tgtBodyAngle = setRelTheta( this.bodyAngle, this.maxBodyAngle );
         else
         {
           this.tgtBodyAngle = setRelTheta( this.bodyAngle, 0 );
           this.nextAngleAdjustMs = 3000;
         }
-        if( this.p.y < 10 )
-          this.tgtBodyAngle = .2;
       }
+      if( this.p.y < 10 )
+        this.tgtBodyAngle = setRelTheta( this.bodyAngle, .05 );
     }
 
     return( true );
 
     if( this.nextMissile > 0 )
       this.nextMissile -= 1;
-    else if( this.p.y >= this.target_y ) // time to shoot a missile. Don't shoot while ascending.
+    else if( this.p.y >= this.target_y ) // time to shoot a missile. 
       if( ( this.v.dx() > 0 && e.chopper.p.x > this.p.x ) ||
           ( this.v.dx() < 0 && e.chopper.p.x < this.p.x ) ) // only shoot if we're going towards the chopper
       {
         e.addObject( new MissileSmall( this.p, this.v, this.bodyAngle, oType = c.OBJECT_TYPE_E_WEAPON ) );
         this.nextMissile = 50 + randInt( 0, 100 );
       }
-    if( ( ( this.v.dx() > 0 && e.chopper.p.x > this.p.x ) ||
-          ( this.v.dx() < 0 && e.chopper.p.x < this.p.x ) )
-        && randInt( 0, 10 ) == 0 ) // If jet is behind sometimes try to level with chopper
-      this.target_y = e.chopper.p.y + 2;
-
-    if( Math.abs( this.p.y - this.target_y ) > .2 )
-    {
-      if( this.p.y < this.target_y )
-      {
-        this.p.y += .15;
-      }
-      else if( this.p.y > this.target_y )
-        this.p.y -= .15;
-    }
 
     return true;
   }
@@ -248,26 +259,31 @@ export class Plane
   draw( p )
   {
     // tbd, this should be done once to save time.
-    const i = Plane.Planes[ this.planeType ].image;
-    const w = i.width * Plane.Planes[ this.planeType ].imgFactor;
-    const h = i.height * Plane.Planes[ this.planeType ].imgFactor;
+
+    // tbd, fix. Wait for load.
+    {
+      this.i = Plane.planes[ this.oType ].image;
+      this.w = this.i.width * Plane.planes[ this.oType ].imgFactor;
+      this.h = this.i.height * Plane.planes[ this.oType ].imgFactor;
+    }
 
     this.e.ctx.translate( p.x, p.y );
     let theta = this.bodyAngle;
 
-    if( dirFromAngle( this.bodyAngle ) == c.DIRECTION_LEFT )
+    if( dirFromAngle( this.bodyAngle ) == c.DIR_LEFT )
       this.e.ctx.scale( 1, -1 );
     else
       theta = -theta;
 
     this.e.ctx.rotate( theta );
 
-    this.e.ctx.drawImage( i, -w / 2, -h / 2, w, h );
+    this.e.ctx.drawImage( this.i, -this.w / 2, -this.h / 2, this.w, this.h );
     this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
 
-    const projShadow = projection( this.e.camera, new Point( p.x, 0, p.z ) );
+    const projShadow = projection( this.e.camera, new Point( p.x, 0, 0 ) );
+    this.e.ctx.fillStyle = 'black';
     this.e.ctx.beginPath();
-    this.e.ctx.ellipse( p.x, projShadow.y, w/3, 2, 0, 0, 2 * c.PI )
+    this.e.ctx.ellipse( p.x, projShadow.y, this.w/3, 2, 0, 0, 2 * c.PI );
     this.e.ctx.fill();
   }
 }
