@@ -13,7 +13,7 @@ export class SkyGround
     this.e = e; // game engine
     this.oType = "SkyGround";
     this.p = new Point( 0, 0, c.HORIZON_DISTANCE );
-
+  
     if( !SkyGround.img )
     {
       SkyGround.img = new Image();
@@ -97,15 +97,16 @@ export class Cloud
     this.p = new Point( x, y, z );
     this.w = 0;
     this.h = 0;
+    this.colRect = [ 0, 0, 0, 0 ];
 
     this.imgFactor = 1;
     if( z > 5000 )
       this.imgFactor = .1;
     else if( z > 2000 )
       this.imgFactor = .25;
-    else if ( z > 1000 )
+    else if( z > 1000 )
       this.imgFactor = .5;
-    
+
     this.checkPosTimer = 1000 + x; // check to see if this cloud is off the screen and move back right
                                     // use x to randomize so we don't do all checks at once.
     if( !Cloud.img )
@@ -113,6 +114,11 @@ export class Cloud
       Cloud.img = new Image();
       Cloud.img.src = "./images/backgrounds/cloud.gif";
     }
+  }
+
+  processMessage( e, message, param=None )
+  {
+    if( message == c.MSG_COLLISION_DET ) { }
   }
 
   update( deltaMs ) 
@@ -232,7 +238,7 @@ export class Tree
     this.oType = "Tree";
     this.p = new Point( x, y, z );
     this.imgFactor = .5;
-    if( z > 1000 )
+    if( z > 500 )
       this.imgFactor = .05;
     else if( z > 250 )
       this.imgFactor = .1;
@@ -269,11 +275,23 @@ export class Base
     this.p = new Point( x, y, z );
     this.label = label;
     this.imgFactor = .75;
+    this.colRect = [ 0, 0, 0, 0 ];
 
     if( !Base.image )
     {
       Base.img = new Image();
       Base.img.src = "./images/backgrounds/base.gif";
+    }
+  }
+
+  processMessage( e, message, param=None )
+  {
+    if( message == c.MSG_COLLISION_DET )
+    {
+      //if param.oType == OBJECT_TYPE_E_WEAPON:
+      this.si -= param.wDamage;
+      if( this.si < 0 )
+        e.addObject( new Explosion( this.p ) );
     }
   }
 
@@ -330,6 +348,7 @@ class CityBuilding
     this.si = c.SI_BUILDING;
     this.colRect = undefined; // tbd
     this.imgFactor = 1.5;
+    this.colRect = [ 0, 0, 0, 0 ];
 
     this.ix = CityBuilding.imgInfo[ this.buildIx ][ 0 ];
     this.iy = CityBuilding.imgInfo[ this.buildIx ][ 1 ];
@@ -440,6 +459,7 @@ class EBuilding // from miscBuildings.gif
     this.points = c.POINTS_E_BUILDING;
     this.showSICount = 0;
     this.imgFactor = 2.0;
+    this.colRect = [ 0, 0, 0, 0 ];
 
     this.ix = EBuilding.imgInfo[ this.buildIx ][ 0 ];
     this.iy = EBuilding.imgInfo[ this.buildIx ][ 1 ];

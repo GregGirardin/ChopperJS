@@ -13,7 +13,6 @@ export class Plane
               image : undefined,
               src : "images/vehicles/Bomber1.png",
               si : c.SI_BOMBER1,
-              siMax : c.SI_BOMBER1,
               bombs : 2,
               damage : 0,
               imgFactor : .8,
@@ -21,13 +20,13 @@ export class Plane
               spd : c.MAX_BOMBER1_VEL,
               adjTimeMs : 3000, // average time to recalculate ideal trajectory 
               turnDelta : undefined, // How far from chopper do we get before we turn round (if this plane does that)
-              maxBodyAngle : .15
+              maxBodyAngle : .15,
+              colRect : [ -7, 0, 7, -2 ],
               },
     Bomber2 : {
               image : undefined,
               src : "images/vehicles/Bomber2.gif",
               si : c.SI_BOMBER2,
-              siMax : c.SI_BOMBER2,
               bombs : 3,
               damage : 0,
               imgFactor : .7,
@@ -35,13 +34,13 @@ export class Plane
               spd : c.MAX_BOMBER2_VEL,
               adjTimeMs : 3000, 
               turnDelta : undefined,
-              maxBodyAngle : .15
+              maxBodyAngle : .15,
+              colRect : [ -7, 0, 7, -2 ],
               },
     Fighter1 : {
               image : undefined,
               src : "images/vehicles/Fighter.gif",
               si : c.SI_FIGHTER1,
-              siMax : c.SI_FIGHTER1,
               bombs : 0,
               damage : 0,
               imgFactor : .4,
@@ -49,13 +48,13 @@ export class Plane
               spd : c.MAX_FIGHTER1_VEL,
               adjTimeMs : 1500, 
               turnDelta : 250,
-              maxBodyAngle : .2
+              maxBodyAngle : .2,
+              colRect : [ -3, 1, 3, -1 ],
               },
     Fighter2 : {
               image : undefined,
               src : "images/vehicles/Jet4.png",
               si : c.SI_FIGHTER2,
-              siMax : c.SI_FIGHTER2,
               bombs : 0,
               damage : 0,
               imgFactor : .3,
@@ -63,7 +62,8 @@ export class Plane
               spd : c.MAX_FIGHTER2_VEL,
               adjTimeMs : 1000, 
               turnDelta : 100, // fast aggressive
-              maxBodyAngle : .25
+              maxBodyAngle : .25,
+              colRect : [ -3, 1, 3, -1 ],
               },
   }
 
@@ -72,8 +72,8 @@ export class Plane
   {
     this.e = e;
     this.oType = planeType;
-    this.spd = Plane.planes[ planeType ].spd;
-    this.p = new Point( x, y, 2 );
+ 
+    this.p = new Point( x, y, 1 );
     this.target_y = y;
     this.time = 0;
     this.bodyAngle = c.PI;
@@ -83,15 +83,16 @@ export class Plane
     this.turnDelta = Plane.planes[ planeType ].turnDelta; // for fighers, when do they turn around.
     this.maxBodyAngle = Plane.planes[ planeType ].maxBodyAngle;
     this.adjTimeMs = Plane.planes[ planeType ].adjTimeMs;
+    this.colRect = Plane.planes[ planeType ].colRect;
+    this.spd = Plane.planes[ planeType ].spd;
+    this.si = Plane.planes[ planeType ].si;
 
     if( !Plane.planes.Bomber1.image )
-    {
       for( const[ k, o ] of Object.entries( Plane.planes ) )
       {
         o.image = new Image();
         o.image.src = o.src;
       }
-    }
   }
 
   processMessage( message, param=undefined )
@@ -260,7 +261,6 @@ export class Plane
       this.i = Plane.planes[ this.oType ].image;
       this.w = this.i.width * Plane.planes[ this.oType ].imgFactor;
       this.h = this.i.height * Plane.planes[ this.oType ].imgFactor;
-      ReadableStreamDefaultController;
     }
 
     this.e.ctx.translate( p.x, p.y );

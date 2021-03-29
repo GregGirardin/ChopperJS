@@ -17,7 +17,8 @@ export class Vehicle
               adjTimeMs : 1000, // average time to recalculate ideal trajectory 
               wheelY : - 5, // all wheel's have the same y
               wheelX : [ -42, 45 ], // array of x positions for each wheel.
-              wheelR : 12 // Wheel radius
+              wheelR : 12, // Wheel radius
+              colRect : [ -2.5, 2, 2.5, 0 ],
               },
     Transport1 : {
               image : undefined,
@@ -30,6 +31,7 @@ export class Vehicle
               spd : c.MAX_TRANS1_VEL,
               adjTimeMs : 1000,
               wheelX : [ 60, 20, -28, -65 ], wheelY : -5, wheelR : 16,
+              colRect : [ -4, 3, 4, 0 ],
               },
     Transport2 : {
               image : undefined,
@@ -41,7 +43,8 @@ export class Vehicle
               points : c.POINTS_FIGHTER1,
               spd : c.MAX_TRANS2_VEL,
               adjTimeMs : 3000, 
-              wheelX : [ 53, 20, -20, -51 ], wheelY : - 5, wheelR : 14,
+              wheelX : [ 53, 20, -20, -51 ], wheelY : -5, wheelR : 14,
+              colRect : [ -4, 3, 4, 0 ],
               },
     Truck :   {
               image : undefined,
@@ -53,7 +56,8 @@ export class Vehicle
               points : c.POINTS_FIGHTER2,
               spd : c.MAX_TRUCK_VEL,
               adjTimeMs : 500, 
-              wheelX : [ 72, -23, -60 ], wheelY : - 5, wheelR : 16,
+              wheelX : [ 72, -23, -60 ], wheelY : -5, wheelR : 16,
+              colRect : [ -4, 4, 4, 0 ],
               },
   }
 
@@ -68,9 +72,11 @@ export class Vehicle
     this.wheelX = Vehicle.vehicles[ type ].wheelX;
     this.wheelY = Vehicle.vehicles[ type ].wheelY;
     this.wheelR = Vehicle.vehicles[ type ].wheelR;
+    this.wheelcolRectR = Vehicle.vehicles[ type ].colRect;
+    this.colRect = Vehicle.vehicles[ type ].colRect;
     this.p = new Point( x, 0, 2 );
     this.showSICount = 0;
-    this.bodyAngle = (dir == c.DIR_LEFT) ? c.PI : 0;
+    this.bodyAngle = ( dir == c.DIR_LEFT ) ? c.PI : 0;
 
     if( !Vehicle.vehicles.Jeep.image )
       for( const[ k, o ] of Object.entries( Vehicle.vehicles ) )

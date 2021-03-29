@@ -21,6 +21,7 @@ export class Tank
     this.e = e;
     this.oType = "Tank";
     this.p = new Point( x, 0, 1 );
+    this.colRect = [ -4, 4, 4, 0 ];
     this.cannonAngle = .1; // relative angle 'up' from level (left or right)
     this.si = this.siMax = c.SI_TANK;
     this.points = c.POINTS_TANK;
@@ -41,6 +42,11 @@ export class Tank
       Tank.image.src = "./images/vehicles/Tank.gif";
       Tank.cannon.src = "./images/vehicles/Cannon.gif";
     }
+  }
+
+  processMessage( e, message, param=None )
+  {
+    if( message == c.MSG_COLLISION_DET ) { }
   }
 
   update( deltaMs )

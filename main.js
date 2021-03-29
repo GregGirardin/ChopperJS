@@ -1,21 +1,11 @@
 import { c } from './constants.js';
 import { SkyGround, Mtn, Hill, Cloud, Rock, Grass, Tree, Base, buildCity, buildEBase, Rectangle } from './background.js';
-import { Point, projection, collisionCheck, angleDiff, randInt } from './utils.js';
+import { Point, projection, collisionCheck, displayColRect, randInt } from './utils.js';
 import { Helicopter } from './helicopter.js';
 import { Plane } from './planes.js';
 import { Vehicle } from './vehicles.js';
 import { Tank } from './tank.js';
 import { Missile } from './missiles.js';
-
-/*
-import * as ai from './enemyAI.js';
-import * as ex from './explosions.js';
-import * as helo from './helicopter.js';
-import * as jeep from './jeep.js';
-import * as missiles from './missiles.js';
-import * as planes from './planes.js';
-import * as tank from './tank.js';
-*/
 
 window.onload = gameInit;
 
@@ -117,12 +107,12 @@ class gameEngine
     // Two lists to speed up collision detection and other interactions of objects that can interact.
     // We call update() and check for collisions for objects[]
 
-    //this.objects.push( new Rectangle( this, new Point( 0, 0, 10), new Point( 50, 0) ) );
+    // this.objects.push( new Rectangle( this, new Point( 0, 0, 10), new Point( 50, 0) ) );
 
     // Sky and ground
     this.bg_objects.push( new SkyGround( this ) );
 
-    // // Mountain range
+    // Mountain range
     this.bg_objects.push( new Mtn( this, 200, 0, c.HORIZON_DISTANCE / 2 ) );
     this.bg_objects.push( new Hill( this, 200, 0, c.HORIZON_DISTANCE / 4 ) );
     
@@ -131,19 +121,18 @@ class gameEngine
       this.objects.push( new Cloud( this,
                                     randInt( c.MIN_WORLD_X - 1000, c.MAX_WORLD_X * 2 ),
                                     randInt( 150, 225 ),
-                                    randInt( c.HORIZON_DISTANCE / 20,
-                                             c.HORIZON_DISTANCE / 2 ) ) ); // in front of the mountains
-
+                                    randInt( 10,
+                                             c.HORIZON_DISTANCE / 4 ) ) ); // in front of the mountains
     // Rocks
     for( z = 2;z < 22;z += 1 ) // Z is behind projection plane but the math works.
       this.bg_objects.push( new Rock( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
 
     // Grass
-    for( z = 25;z < 90;z++ )
+    for( z = 25;z < 50;z++ )
       this.bg_objects.push( new Grass( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
 
     // Trees
-    for( z = 40;z < 500;z += 20 )
+    for( z = 20;z < 200;z += 2 )
       this.bg_objects.push( new Tree( this, randInt( 20, c.MAX_WORLD_X ), 0, z ) );
 
     // Base - active, update nishes resources
@@ -167,7 +156,7 @@ class gameEngine
     this.objects.push( new Vehicle( this, "Truck", c.MIN_WORLD_X ) );
     this.objects.push( new Tank( this, -10 ) );
 
-     // Sort objects by decreasing Z so closer are drawn on top
+    // Sort objects by decreasing Z so closer are drawn on top
     this.bg_objects.sort( function( a, b ){ return b.p.z - a.p.z } );
     this.objects.sort( function( a, b ){ return b.p.z - a.p.z } ) ;
   }
@@ -189,7 +178,8 @@ class gameEngine
       {
         let obj1 = this.objects[ index1 ];
         let obj2 = this.objects[ index2 ];
-        if( collisionCheck( this, obj1, obj2 ) )
+
+        if( collisionCheck( obj1, obj2 ) )
         {
           obj1.processMessage( this, c.MSG_COLLISION_DET, obj2 );
           obj2.processMessage( this, c.MSG_COLLISION_DET, obj1 );
@@ -207,12 +197,9 @@ class gameEngine
     var tgtCamXOff;
     switch( this.chopper.chopperDir )
     {
-      case c.DIR_FWD:
-        tgtCamXOff = 0; break;
-      case c.DIR_LEFT:
-        tgtCamXOff = -20; break;
-      case c.DIR_RIGHT:
-        tgtCamXOff = 20; break;
+      case c.DIR_FWD:   tgtCamXOff =   0; break;
+      case c.DIR_LEFT:  tgtCamXOff = -20; break;
+      case c.DIR_RIGHT: tgtCamXOff =  20; break;
     }
 
     if( Math.abs( this.currentCamOff - tgtCamXOff ) < 1 )
@@ -220,10 +207,12 @@ class gameEngine
       this.currentCamOff = tgtCamXOff;
       this.cameraOnHelo = true;
     }
-    else if( this.currentCamOff < tgtCamXOff )
-      this.currentCamOff += .5;
-    else if( this.currentCamOff > tgtCamXOff )
-      this.currentCamOff -= .5;
+    else
+      this.currentCamOff += ( this.currentCamOff < tgtCamXOff ) ? .5 : -.5;
+    // else if( this.currentCamOff < tgtCamXOff )
+    //   this.currentCamOff += .5;
+    // else if( this.currentCamOff > tgtCamXOff )
+    //   this.currentCamOff -= .5;
 
     this.camera.x = this.chopper.p.x + this.currentCamOff;
     if( this.camera.x < c.MIN_WORLD_X )
@@ -276,6 +265,8 @@ class gameEngine
           this.ctx.moveTo( p.x, p.y - 5 );
           this.ctx.lineTo( p.x, p.y + 5 );
           this.ctx.stroke();
+
+          displayColRect( this, o )
         }
       }
     }
@@ -297,15 +288,13 @@ class gameEngine
 }
 
 let gEngine;
-let frameCount = 1000; // temp, just run for a couple seconds.
 let lastTimestamp = 0;
 function gameLoop( timeStamp )
 {
   var delta = timeStamp - lastTimestamp;
   lastTimestamp = timeStamp;
   gEngine.loop( delta );
-  // if( frameCount-- > 0 )
-    window.requestAnimationFrame( gameLoop );
+  window.requestAnimationFrame( gameLoop );
 }
 
 function keyDownHandler( e )

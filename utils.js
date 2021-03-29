@@ -232,11 +232,40 @@ export function projection( cam, p )
 
 export function collisionCheck( o1, o2 )
 {
-  return false;
+  let l1x = o1.p.x + o1.colRect[ 0 ];
+  let l1y = o1.p.y + o1.colRect[ 1 ];
+  let r1x = o1.p.x + o1.colRect[ 2 ];
+  let r1y = o1.p.y + o1.colRect[ 3 ];
+
+  let l2x = o2.p.x + o2.colRect[ 0 ];
+  let l2y = o2.p.y + o2.colRect[ 1 ];
+  let r2x = o2.p.x + o2.colRect[ 2 ];
+  let r2y = o2.p.y + o2.colRect[ 3 ];
+
+  if( l1x >= r2x || l2x >= r1x || l1y <= r2y || l2y <= r1y )
+    return false;
+
+  return true;
 }
 
 export function displayColRect( e, o ) // Display the projection of the collision rectangle for debug.
 {
+  let l1x = o.p.x + o.colRect[ 0 ];
+  let l1y = o.p.y + o.colRect[ 1 ];
+  let r1x = o.p.x + o.colRect[ 2 ];
+  let r1y = o.p.y + o.colRect[ 3 ];
+
+  let p1 = projection( e.camera, new Point( l1x, l1y, o.p.z ) );
+  let p2 = projection( e.camera, new Point( r1x, r1y, o.p.z ) );
+
+  e.ctx.strokeStyle = 'orange';
+  e.ctx.beginPath();
+  e.ctx.moveTo( p1.x, p1.y );
+  e.ctx.lineTo( p2.x, p1.y );
+  e.ctx.lineTo( p2.x, p2.y );
+  e.ctx.lineTo( p1.x, p2.y );
+  e.ctx.lineTo( p1.x, p1.y );
+  e.ctx.stroke();
 }
 // Horizontal distance to the nearest object of type oType
 // + means it's in the +x direction, neg means -x direction
@@ -247,26 +276,6 @@ export function distanceToObjectType( e, xPos, oType )
 export function showSI( c, p, o )
 {
   if( o.showSICount > 0 ) { }
-}
-
-export class dbgPoint // Debug point
-{
-  constructor( p )
-  {
-    this.p = Point( p.x, p.y, p.z );
-    this.oType = c.OBJECT_TYPE_NONE;
-    this.colRect = ( -1, -1, 1, 1 );
-  }
-
-  processMessage( message, param=None ) { }
-
-  update( e ) { return True; }
-
-  draw( e )
-  {
-    proj = projection( e.camera, this.p );
-    e.canvas.create_rectangle( proj.x - 1, proj.y - 1, proj.x, proj.y, outline="red" );
-  }
 }
 
 export function randInt( min, max )

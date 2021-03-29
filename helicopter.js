@@ -17,7 +17,7 @@ export class Helicopter
 
     this.e = e;
     this.oType = "Chopper";
-    this.colRect = [ -2, 3, 2, 0 ];
+    this.colRect = [ -1, 2, 1, 0 ];
     this.p = new Point( x, y, z );
     this.rotVertex = new Point();
     this.logVertex = false;
@@ -33,7 +33,6 @@ export class Helicopter
     // c.RESOURCEs / weapons. See c.RESOURCE_XYZ
     this.maxAmount = [ 100.0, c.MAX_BULLETS, c.MAX_S_MISSILES, c.MAX_L_MISSILES, c.MAX_BOMBS, c.SI_CHOPPER ];
     this.curAmount = [ 100.0, c.MAX_BULLETS, c.MAX_S_MISSILES, c.MAX_L_MISSILES, c.MAX_BOMBS, c.SI_CHOPPER ];
-
     this.bulletRdyCounter = 0;
     this.displayStickCount = 0;
     this.imgFactor = 1;
@@ -131,14 +130,18 @@ export class Helicopter
             break;
 
           case "a":
-            this.weapon = "MissileA";
+            this.weapon = "Bullet";
             break;
 
           case "s":
+            this.weapon = "MissileA";
+            break;
+
+          case "w":
             this.weapon = "MissileB";
             break;
 
-          case "d":
+          case "z":
             this.weapon = "Bomb";
             break;
 
@@ -190,13 +193,11 @@ export class Helicopter
 
     if( this.weapon )
     {
-      let direction = setRelTheta( ( this.chopperDir == c.DIR_RIGHT ) ? 0 : c.PI, this.bodyAngle )
-
       if( this.chopperDir != c.DIR_FWD || this.weapon == "Bomb" )
         this.e.addObject( new Missile( this.e,
                                        this.weapon,
                                        new Point( this.p.x, this.p.y, 1 ),
-                                       direction,
+                                       ( this.chopperDir == c.DIR_RIGHT ) ? 0 : c.PI,
                                        this.v ) );
       this.weapon = undefined;
     }
@@ -310,23 +311,23 @@ export class Helicopter
 
     this.e.ctx.drawImage( hImg, -w / 2 - this.rotVertex.x, -h / 2 - this.rotVertex.y, w, h );
 
-    if( this.e.debugCoords ) // draw the vertex
-    {
-      this.e.ctx.strokeStyle = 'black';
-      this.e.ctx.beginPath();
-      this.e.ctx.moveTo( -5,  0 );
-      this.e.ctx.lineTo(  5,  0 );
-      this.e.ctx.moveTo(  0, -5 );
-      this.e.ctx.lineTo(  0,  5 );
-      this.e.ctx.stroke();
-    }
+    // if( this.e.debugCoords ) // draw the vertex
+    // {
+    //   this.e.ctx.strokeStyle = 'black';
+    //   this.e.ctx.beginPath();
+    //   this.e.ctx.moveTo( -5,  0 );
+    //   this.e.ctx.lineTo(  5,  0 );
+    //   this.e.ctx.moveTo(  0, -5 );
+    //   this.e.ctx.lineTo(  0,  5 );
+    //   this.e.ctx.stroke();
+    // }
 
     // rotor
     const rLen = 80 * Math.cos( this.rotorTheta );
     this.e.ctx.strokeStyle = 'black';
     this.e.ctx.beginPath();
     this.e.ctx.moveTo( -rLen, -5 );
-    this.e.ctx.lineTo( rLen, -5 );
+    this.e.ctx.lineTo(  rLen, -5 );
     this.e.ctx.stroke();
 
     // Reset transformation matrix
