@@ -108,17 +108,12 @@ export class Cloud
       this.imgFactor = .5;
 
     this.checkPosTimer = 1000 + x; // check to see if this cloud is off the screen and move back right
-                                    // use x to randomize so we don't do all checks at once.
+                                   // use x to randomize so we don't do all checks at once.
     if( !Cloud.img )
     {
       Cloud.img = new Image();
       Cloud.img.src = "./images/backgrounds/cloud.gif";
     }
-  }
-
-  processMessage( e, message, param=None )
-  {
-    if( message == c.MSG_COLLISION_DET ) { }
   }
 
   update( deltaMs ) 
@@ -161,11 +156,11 @@ export class Cloud
     this.e.ctx.drawImage( Cloud.img, p.x - this.w / 2, p.y - this.h / 2, this.w, this.h );
 
     // If we want the clouds to have shadows.
-    // const projShadow = projection( this.e.camera, new Point( this.p.x, 0, this.p.z ) );
-    // this.e.ctx.fillStyle = 'black';
-    // this.e.ctx.beginPath();
-    // this.e.ctx.ellipse( p.x, projShadow.y, this.w / 3, 2, 0, 0, 2 * c.PI )
-    // this.e.ctx.fill();
+    const projShadow = projection( this.e.camera, new Point( this.p.x, 0, this.p.z ) );
+    this.e.ctx.fillStyle = 'black';
+    this.e.ctx.beginPath();
+    this.e.ctx.ellipse( p.x, projShadow.y, this.w / 4, 2, 0, 0, 2 * c.PI )
+    this.e.ctx.fill();
   }
 }
 
@@ -237,6 +232,7 @@ export class Tree
     this.e = e;
     this.oType = "Tree";
     this.p = new Point( x, y, z );
+
     this.imgFactor = .5;
     if( z > 500 )
       this.imgFactor = .05;
@@ -244,6 +240,7 @@ export class Tree
       this.imgFactor = .1;
     else if ( z > 50 )
       this.imgFactor = .25;
+
     if( !Tree.image )
     {
       Tree.img = new Image();
@@ -291,7 +288,7 @@ export class Base
       //if param.oType == OBJECT_TYPE_E_WEAPON:
       this.si -= param.wDamage;
       if( this.si < 0 )
-        e.addObject( new Explosion( this.p ) );
+        e.objects.push( new Explosion( this.p ) );
     }
   }
 
@@ -346,7 +343,6 @@ class CityBuilding
     this.label = label;
     this.buildIx = buildIx;
     this.si = c.SI_BUILDING;
-    this.colRect = undefined; // tbd
     this.imgFactor = 1.5;
     this.colRect = [ 0, 0, 0, 0 ];
 
@@ -402,7 +398,7 @@ export function buildCity( e, x, bCount, label=undefined )
   {
     buildIx = randInt( 0, CityBuilding.numBuildings - 1 );
     building = new CityBuilding( e, x, buildIx, label=label );
-    e.addObject( building );
+    e.objects.push( building );
     x += 2;
   }
 }
@@ -514,7 +510,7 @@ export function buildEBase( e, x, bCount, label=undefined )
   {
     buildIx = randInt( 0, EBuilding.numBuildings - 1 );
     buildObj = new EBuilding( e, x, buildIx, label="Enemy" )
-    e.addObject( buildObj  );
+    e.objects.push( buildObj  );
     x += 4; // adjust pixels to world coords.
   }
 }

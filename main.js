@@ -1,11 +1,11 @@
 import { c } from './constants.js';
 import { SkyGround, Mtn, Hill, Cloud, Rock, Grass, Tree, Base, buildCity, buildEBase, Rectangle } from './background.js';
-import { Point, projection, collisionCheck, displayColRect, randInt } from './utils.js';
+import { Point, projection, collisionCheck, displayColRect, drawCoords, randInt } from './utils.js';
 import { Helicopter } from './helicopter.js';
 import { Plane } from './planes.js';
 import { Vehicle } from './vehicles.js';
 import { Tank } from './tank.js';
-import { Missile } from './missiles.js';
+// import { Missile } from './missiles.js';
 
 window.onload = gameInit;
 
@@ -67,7 +67,7 @@ class gameEngine
     switch( m )
     {
       case c.MSG_UI: // currently all UI messages are for the chopper.
-        this.chopper.processMessage( c.MSG_UI, param );
+        this.chopper.processMessage( this, c.MSG_UI, param );
         break;
 
       case c.MSG_BUILDING_DESTROYED: break;
@@ -118,11 +118,10 @@ class gameEngine
     
     // Clouds.. clouds move so they're active.
     for( z = 1;z < 10;z++ )
-      this.objects.push( new Cloud( this,
-                                    randInt( c.MIN_WORLD_X - 1000, c.MAX_WORLD_X * 2 ),
-                                    randInt( 150, 225 ),
-                                    randInt( 10,
-                                             c.HORIZON_DISTANCE / 4 ) ) ); // in front of the mountains
+      this.bg_objects.push( new Cloud( this,
+                                       randInt( c.MIN_WORLD_X - 1000, c.MAX_WORLD_X * 2 ),
+                                       randInt( 150, 225 ),
+                                       randInt( 10, c.HORIZON_DISTANCE / 4 ) ) ); // in front of the mountains
     // Rocks
     for( z = 2;z < 22;z += 1 ) // Z is behind projection plane but the math works.
       this.bg_objects.push( new Rock( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
@@ -140,12 +139,12 @@ class gameEngine
 
     // Create the Chopper
     this.chopper = new Helicopter( this, 0, 0, 1 );
-    this.objects.push( this. chopper );
+    this.objects.push( this.chopper );
 
     buildCity( this, c.MIN_WORLD_X, c.NUM_CITY_BUILDINGS );
     buildEBase( this, c.MAX_WORLD_X / 2, c.NUM_E_BASE_BUILDINGS + this.level * 2 );
 
-     // this.objects.push( new GameManager( this ) )
+    //this.objects.push( new GameManager( this ) )
 
     this.objects.push( new Plane( this, "Fighter1", 100, 30 ) );
     this.objects.push( new Plane( this, "Fighter2", 0, 30 ) );
@@ -161,9 +160,18 @@ class gameEngine
     this.objects.sort( function( a, b ){ return b.p.z - a.p.z } ) ;
   }
 
+  // tbd. put new objects in temp list and add all later.
+  // so we don't add while processing the list in this.update()
   addObject( newobj )
   {
     this.objects.push( newobj );
+    this.objects.sort( function( a, b ){ return b.p.z - a.p.z } );
+  }
+
+  addBgObject( newobj )
+  {
+    this.bg_objects.push( newobj );
+    this.bg_objects.sort( function( a, b ){ return b.p.z - a.p.z } );
   }
 
   update( deltaMs )
@@ -172,27 +180,39 @@ class gameEngine
 
     // new game timer
 
-    // Collision detection
+    // Collision detection for objects with a colRect
+    // Background objects don't and some active foreground objects don't.
+    // 
     for( index1 = 0;index1 < this.objects.length - 1;index1++ )
-      for( index2 = index1;index2 < this.objects.length;index2++ )
+      for( index2 = index1 + 1;index2 < this.objects.length;index2++ )
       {
         let obj1 = this.objects[ index1 ];
         let obj2 = this.objects[ index2 ];
 
-        if( collisionCheck( obj1, obj2 ) )
-        {
-          obj1.processMessage( this, c.MSG_COLLISION_DET, obj2 );
-          obj2.processMessage( this, c.MSG_COLLISION_DET, obj1 );
-        }
+        if( ( typeof obj1.colRect === 'array' ) && ( typeof obj2.colRect === 'array' ) )
+          if( collisionCheck( obj1, obj2 ) )
+          {
+            obj1.processMessage( this, c.MSG_COLLISION_DET, obj2 );
+            obj2.processMessage( this, c.MSG_COLLISION_DET, obj1 );
+          }
       }
 
+    // for( index1 = 0;index1 < this.bg_objects.length;index1++ )
+    //   if( typeof this.bg_objects[ index1 ].update === 'function' )
+    //     if( this.bg_objects[ index1 ].update( deltaMs ) == false )
+    //     {
+    //       // Not all background objects have an update
+    //       this.bg_objects.splice( index1, 1 );
+    //       index1--;
+    //     }
+      
     for( index1 = 0;index1 < this.objects.length;index1++ )
-      if( this.objects[ index1 ].update( deltaMs ) == false )
-      {
-        this.objects.splice( index1, 1 );
-        index1--;
-      }
-
+      if( typeof this.objects[ index1 ].update === 'function' )
+        if( this.objects[ index1 ].update( deltaMs ) == false )
+        {
+          this.objects.splice( index1, 1 );
+          index1--;
+        }
     // move the camera
     var tgtCamXOff;
     switch( this.chopper.chopperDir )
@@ -237,15 +257,7 @@ class gameEngine
       {
         o.draw( p );
         if( this.debugCoords )
-        {
-          this.ctx.strokeStyle = 'red';
-          this.ctx.beginPath();
-          this.ctx.moveTo( p.x - 5, p.y );
-          this.ctx.lineTo( p.x + 5, p.y );
-          this.ctx.moveTo( p.x, p.y - 5 );
-          this.ctx.lineTo( p.x, p.y + 5 );
-          this.ctx.stroke();
-        }
+          drawCoords( this, p );
       }
     }
 
@@ -258,15 +270,9 @@ class gameEngine
         o.draw( p );
         if( this.debugCoords )
         {
-          this.ctx.strokeStyle = 'red';
-          this.ctx.beginPath();
-          this.ctx.moveTo( p.x - 5, p.y );
-          this.ctx.lineTo( p.x + 5, p.y );
-          this.ctx.moveTo( p.x, p.y - 5 );
-          this.ctx.lineTo( p.x, p.y + 5 );
-          this.ctx.stroke();
-
-          displayColRect( this, o )
+         if( typeof o.colRect === 'array' )
+            displayColRect( this, o );
+          drawCoords( this, p );
         }
       }
     }
@@ -299,6 +305,7 @@ function gameLoop( timeStamp )
 
 function keyDownHandler( e )
 {
+  //logCollisions();
   gEngine.processMessage( c.MSG_UI, e );
 }
 

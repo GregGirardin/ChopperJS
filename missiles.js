@@ -2,79 +2,96 @@ import { c } from './constants.js';
 import { Explosion } from './explosions.js';
 import { projection, Point, Vector, getRelTheta, dirFromAngle, setRelTheta } from './utils.js';
 
-// Explosions, smoke and other sprite sheets.
-
 export class Missile
 {
   static firstTime = true;
+  static types = [];
 
   static missiles = 
   {
     Bullet    : { image : undefined, path : undefined,
-                  dmg: c.WEAPON_DAMAGE_BULLET,
-                  lifetime : 2000, // milliseconds
+                  damage: c.WEAPON_DAMAGE_BULLET,
+                  lifetime : 2000,
                   spd : c.MAX_BULLET_VEL,
                   imgFactor : 1,
                   colRect : [ -.5, .5, .5, -.5 ],
                   },
     MissileA  : { image : undefined, path : "images/chopper/missileA.gif",
-                  dmg: c.WEAPON_DAMAGE_MISSLE_A,
+                  damage: c.WEAPON_DAMAGE_MISSLE_A,
                   lifetime : 2000,
                   spd : c.MAX_MISSILEA_VEL,
                   imgFactor : 1,
                   colRect : [ -.5, .5, -.5, -.5 ],
                   },
     MissileB  : { image : undefined, path : "images/chopper/missileB.gif",
-                  dmg: c.WEAPON_DAMAGE_MISSLE_B,
+                  damage: c.WEAPON_DAMAGE_MISSLE_B,
                   lifetime : 4000,
                   spd : c.MAX_MISSILEB_VEL,
                   imgFactor : 1,
                   colRect : [ -.5, .5, -.5, -.5 ],
                   },
     Bomb      : { image : undefined, path : "images/chopper/bomb.gif",
-                  dmg: c.WEAPON_DAMAGE_MISSLE_B,
+                  damage: c.WEAPON_DAMAGE_MISSLE_B,
                   lifetime : 0, // just drops.
-                  spd : 5, //
+                  spd : c.GRAVITY_TERM_VEL,
                   imgFactor : .15,
                   colRect : [ -.5, 1, .5, -1 ],
                   },
   }
 
-  constructor( e, type, p, angle, initVel )
+  constructor( e, type, p, bodyAngle, v, owner=undefined )
   {
-    this.e = e;
+    this.e = e; // engine
     this.oType = type;
-    this.p = p;
-    this.ticks = 0;
+    this.p = p; // point
+    this.bodyAngle = bodyAngle;
+    this.v = new Vector( v.xc, v.yc );
+    this.owner = owner;
+    this.active = true;
+
+    this.damage = Missile.missiles[ type ].damage;
     this.lifetime = Missile.missiles[ type ].lifetime;
     this.spd = Missile.missiles[ type ].spd;
     this.colRect = Missile.missiles[ type ].colRect;
-    this.type = type;
-    this.fallTime = 500; // ms to drop before thrust comes on so it falls out of the helo.
-
-    this.bodyAngle = angle;
-
-    this.v = new Vector( initVel.xc, initVel.yc );
+    this.fallTime = 500; // ms to drop before thrust comes on
+    this.ticks = 0;
 
     if( type == "Bullet" ) // Bullets don't have to accellerate.
-      this.v.setPolar( angle,this.spd );
+      this.v.setPolar( bodyAngle, this.spd );
 
     if( Missile.firstTime )
     {
       Missile.firstTime = false;
       for( const[ k, o ] of Object.entries( Missile.missiles ) )
+      {
+        Missile.types.push( k );
         if( o.path )
         {
           o.image = new Image();
           o.image.src = o.path;
         }
+      }
     }
   }
 
-  processMessage( message ) { }
+  processMessage( e, msg, param=undefined )
+  {
+    switch( msg )
+    {
+      case c.MSG_COLLISION_DET:
+        // param is the object that collided with it.
+        e.addObject( new Explosion( this.p ) );
+        this.active = false;
+        break;
+    }
+
+  }
 
   update( deltaMs )
   {
+    if( !this.active )
+      return false;
+
     this.ticks += deltaMs;
 
     this.p.x += this.v.xc * deltaMs / 1000;
@@ -95,17 +112,18 @@ export class Missile
   {
     if( this.p.y < 0 )
     {
-      this.e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
-      return false; // tbd.
+      this.e.addObject( new Explosion( this.e, this.p, "Bomb" ) );
+      return false;
     }
 
-    if( this.v.yc > -20 ) // whatever terminal velocity is    
-      this.v.yc -= deltaMs / 10;
+    var vp = this.v.getPolar();
 
-    let vp = this.v.getPolar();
-    if( vp.mag > this.spd ) // terminal velocity
-      vp.mag *= .99; // decelerate
+    this.v.yc -= deltaMs / 10; // tbd, fix. Only increase yc if < terminal velocity
+
+    if( vp.mag > c.GRAVITY_TERM_VEL ) // terminal velocity
+      vp.mag *= .9; // decelerate
     this.bodyAngle = vp.ang; // += this.bodyAngle < vp.ang ? .01 : -.01;
+    
     this.v.setPolar( vp.ang, vp.mag );
 
     return true;
@@ -137,10 +155,11 @@ export class Missile
     {
       this.v.yc -= deltaMs / 50; // Gravity
   
+      // Get to level as falling.
       if( dirFromAngle( this.bodyAngle ) == c.DIR_RIGHT )
       {
         this.bodyAngle += this.bodyAngle > 0 ? -.01 : .01;
-        if( Math.abs( this.bodyAngle ) < .03 )
+        if( Math.abs( this.bodyAngle ) < .02 )
           this.bodyAngle = 0;
       }
       else if( dirFromAngle( this.bodyAngle ) == c.DIR_LEFT )
@@ -154,24 +173,25 @@ export class Missile
     {
       this.v.yc -= deltaMs / 100;
       let vp = this.v.getPolar();
-      if( vp.mag > this.spd ) // terminal velocity
+      if( vp.mag > c.GRAVITY_TERM_VEL )
         vp.mag *= .99; // decelerate
+      // set body to velocity direction
       this.bodyAngle = vp.ang; // += this.bodyAngle < vp.ang ? .01 : -.01;
       this.v.setPolar( vp.ang, vp.mag );
     }
     else  // normal operation
     {
+      var delta = deltaMs / 20;
+
       if( dirFromAngle( this.bodyAngle ) == c.DIR_RIGHT )
       {
         if( this.v.xc < this.spd )
-          this.v.xc += deltaMs;
+          this.v.xc += delta;
       }
       else if( this.v.xc > -this.spd )
-        this.v.xc -= deltaMs;
+        this.v.xc -= delta;
 
-      var delta = deltaMs / 20;
-
-      this.v.yc += this.v.yc < 0 ? delta : -delta;
+      this.v.yc += this.v.yc < 0 ? delta / 5 : -delta / 5;
       if( Math.abs( this.v.yc ) < delta * 1.1 )
         this.v.yc = 0;
     }
@@ -190,13 +210,12 @@ export class Missile
     }
 
     this.e.ctx.translate( p.x, p.y );
+  
     let theta = this.bodyAngle;
-    if( dirFromAngle( this.bodyAngle ) == c.DIR_LEFT )
-      this.e.ctx.scale( 1, -1 );
-    else
-      theta *= -1;
+    dirFromAngle( this.bodyAngle ) == c.DIR_LEFT ? this.e.ctx.scale( 1, -1 ) : theta *= -1;
 
     this.e.ctx.rotate( theta );
+  
     if( this.oType == "Bullet" )
     {
       this.e.ctx.strokeStyle = 'black';
@@ -212,10 +231,10 @@ export class Missile
       this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
 
       // shadow
-      const projShadow = projection( this.e.camera, new Point( p.x, 0, p.z ) );
+      const ps = projection( this.e.camera, new Point( p.x, 0, p.z ) );
       this.e.ctx.fillStyle = 'black';
       this.e.ctx.beginPath();
-      this.e.ctx.ellipse( p.x - this.w / 6, projShadow.y - this.h / 2, this.w / 3, 2, 0, 0, 2 * c.PI )
+      this.e.ctx.ellipse( p.x - this.w / 6, ps.y - this.h / 2, this.w / 3, 2, 0, 0, 2 * c.PI )
       this.e.ctx.fill();
     }
   }

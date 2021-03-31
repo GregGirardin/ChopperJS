@@ -68,10 +68,10 @@ export class Plane
   }
 
 
-  constructor( e, planeType, x, y, dir=c.DIR_LEFT  )
+  constructor( e, type, x, y, dir=c.DIR_LEFT  )
   {
     this.e = e;
-    this.oType = planeType;
+    this.oType = type;
  
     this.p = new Point( x, y, 1 );
     this.target_y = y;
@@ -80,12 +80,12 @@ export class Plane
     this.tgtBodyAngle = c.PI; // what angle do we want to be at, bodyAngle will adjust to this over a short time.
     this.nextAngleAdjustMs = 2000;
 
-    this.turnDelta = Plane.planes[ planeType ].turnDelta; // for fighers, when do they turn around.
-    this.maxBodyAngle = Plane.planes[ planeType ].maxBodyAngle;
-    this.adjTimeMs = Plane.planes[ planeType ].adjTimeMs;
-    this.colRect = Plane.planes[ planeType ].colRect;
-    this.spd = Plane.planes[ planeType ].spd;
-    this.si = Plane.planes[ planeType ].si;
+    this.turnDelta = Plane.planes[ type ].turnDelta; // for fighers, when do they turn around.
+    this.maxBodyAngle = Plane.planes[ type ].maxBodyAngle;
+    this.adjTimeMs = Plane.planes[ type ].adjTimeMs;
+    this.colRect = Plane.planes[ type ].colRect;
+    this.spd = Plane.planes[ type ].spd;
+    this.si = Plane.planes[ type ].si;
 
     if( !Plane.planes.Bomber1.image )
       for( const[ k, o ] of Object.entries( Plane.planes ) )
@@ -102,7 +102,7 @@ export class Plane
       {
         this.si -= param.wDamage;
         if( this.si < 0 )
-          this.e.addObject( new SpriteSheet( this.e, "Explosion1", this.p ) );
+          this.e.objects.push( new SpriteSheet( this.e, "Explosion1", this.p ) );
        }
   }
 

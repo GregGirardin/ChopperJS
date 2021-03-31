@@ -5,7 +5,6 @@ function distance( x1, y1, x2, y2 )
   return Math.sqrt( ( x1 - x2 ) ** 2 + ( y1 - y2 ) ** 2 );
 }
 
-
 export function addAngle( theta, delta )
 {
   theta += delta;
@@ -230,17 +229,32 @@ export function projection( cam, p )
 // Collision detection is done using screen coordinates since that's the player sees.
 // and may not correspond perfectly based on sprite shape.
 
-export function collisionCheck( o1, o2 )
-{
-  let l1x = o1.p.x + o1.colRect[ 0 ];
-  let l1y = o1.p.y + o1.colRect[ 1 ];
-  let r1x = o1.p.x + o1.colRect[ 2 ];
-  let r1y = o1.p.y + o1.colRect[ 3 ];
+// var foo = 0, foo2 = 0;
+// export function logCollisions()
+// {
+//   foo = 1;
+// }
 
-  let l2x = o2.p.x + o2.colRect[ 0 ];
-  let l2y = o2.p.y + o2.colRect[ 1 ];
-  let r2x = o2.p.x + o2.colRect[ 2 ];
-  let r2y = o2.p.y + o2.colRect[ 3 ];
+// returns true of obj's colRect boxes overlap indicating a collision.
+export function collisionCheck( obj1, obj2 )
+{
+  let l1x = obj1.p.x + obj1.colRect[ 0 ];
+  let l1y = obj1.p.y + obj1.colRect[ 1 ];
+  let r1x = obj1.p.x + obj1.colRect[ 2 ];
+  let r1y = obj1.p.y + obj1.colRect[ 3 ];
+
+  let l2x = obj2.p.x + obj2.colRect[ 0 ];
+  let l2y = obj2.p.y + obj2.colRect[ 1 ];
+  let r2x = obj2.p.x + obj2.colRect[ 2 ];
+  let r2y = obj2.p.y + obj2.colRect[ 3 ];
+
+  // if( foo > 0 )
+  // {
+  //   foo--;
+  //   console.log( "---" );
+  //   console.log( l1x, l1y, r1x, r1y );
+  //   console.log( l2x, l2y, r2x, r2y );
+  // }
 
   if( l1x >= r2x || l2x >= r1x || l1y <= r2y || l2y <= r1y )
     return false;
@@ -267,6 +281,18 @@ export function displayColRect( e, o ) // Display the projection of the collisio
   e.ctx.lineTo( p1.x, p1.y );
   e.ctx.stroke();
 }
+// Label this object's screen position with a red +
+export function drawCoords( e, p )
+{
+  e.ctx.strokeStyle = 'red';
+  e.ctx.beginPath();
+  e.ctx.moveTo( p.x - 5, p.y );
+  e.ctx.lineTo( p.x + 5, p.y );
+  e.ctx.moveTo( p.x, p.y - 5 );
+  e.ctx.lineTo( p.x, p.y + 5 );
+  e.ctx.stroke();
+}
+
 // Horizontal distance to the nearest object of type oType
 // + means it's in the +x direction, neg means -x direction
 export function distanceToObjectType( e, xPos, oType )

@@ -53,7 +53,7 @@ export class Helicopter
     }
   } 
 
-  processMessage( message, param=undefined )
+  processMessage( e, message, param=undefined )
   {
     switch( message )
     {
@@ -129,22 +129,10 @@ export class Helicopter
               this.tgtYv = c.MIN_Y_VEL;
             break;
 
-          case "a":
-            this.weapon = "Bullet";
-            break;
-
-          case "s":
-            this.weapon = "MissileA";
-            break;
-
-          case "w":
-            this.weapon = "MissileB";
-            break;
-
-          case "z":
-            this.weapon = "Bomb";
-            break;
-
+          case " ": this.weapon = "Bullet"; break;
+          case "a": this.weapon = "MissileA"; break;
+          case "s": this.weapon = "MissileB"; break;
+          case "z": this.weapon = "Bomb"; break;
           }
         break;
 
@@ -152,8 +140,13 @@ export class Helicopter
         // and e.cameraOnHelo:
         // Note that we ignore collisions after we spawn a helo but before the camera
         // has moved to the helo, otherwise we could get destroyed again before we see the helo
-        if( param.oType == c.OBJECT_TYPE_E_WEAPON )
-          this.curAmount[ c.RESOURCE_SI ] -= param.wDamage;
+        if( Missile.types.includes( param.oType ) )
+        {
+          if( param.owner.oType != this.oType ) // one of our own?
+          {
+            this.curAmount[ c.RESOURCE_SI ] -= param.wDamage;
+          }
+        }
         break;
 
       case c.MSG_RESOURCES_AVAIL:
@@ -193,12 +186,26 @@ export class Helicopter
 
     if( this.weapon )
     {
+      var bodyAngle;
+      switch( this.chopperDir )
+      {
+        case c.DIR_RIGHT:
+          bodyAngle = 0;
+          break;
+        case c.DIR_LEFT:
+          bodyAngle = c.PI;
+          break;
+        case c.DIR_FWD:
+          bodyAngle = -c.PI / 2;
+          break;
+      }
       if( this.chopperDir != c.DIR_FWD || this.weapon == "Bomb" )
-        this.e.addObject( new Missile( this.e,
-                                       this.weapon,
-                                       new Point( this.p.x, this.p.y, 1 ),
-                                       ( this.chopperDir == c.DIR_RIGHT ) ? 0 : c.PI,
-                                       this.v ) );
+        this.e.objects.push( new Missile( this.e,
+                                          this.weapon,
+                                          new Point( this.p.x, this.p.y, 1 ),
+                                          bodyAngle,
+                                          this.v,
+                                          this ) );
       this.weapon = undefined;
     }
 

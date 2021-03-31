@@ -31,6 +31,8 @@ export const c =
   MAX_MISSILEA_VEL : 40,
   MAX_MISSILEB_VEL : 45,
 
+  GRAVITY_TERM_VEL : 30, // how fast things that are falling reach
+
   SCREEN_WIDTH : 1600,
   SCREEN_HEIGHT : 800,
   SCREEN_PAD : 500, // Smaller saves wasted drawing. Make sure nothing disappears.
@@ -60,9 +62,9 @@ export const c =
   BULLET_LIFETIME   : 2000, // ms.
   SHOW_SI_COUNT     : 2000, // How long to show an enemies structural integrity in ms
 
-  DIR_LEFT    : 0,
-  DIR_RIGHT   : 1,
-  DIR_FORWARD : 2,
+  DIR_LEFT  : 0,
+  DIR_RIGHT : 1,
+  DIR_FWD   : 2,
 
   OBJECT_TYPE_WEAPON      :  9, // Weapon I fired
   OBJECT_TYPE_E_WEAPON    : 10, // Weapon enemy fired
@@ -127,7 +129,7 @@ export const c =
 
   RESOURCE_COUNT  : 6,
 
-  //  Messages to objects
+  // Messages to objects
   // From UI to chopper
   MSG_UI            : 0,// a UI messages to main Q sent to chopper for handling.
   MSG_COLLISION_DET : 1, // Collision detected
@@ -141,5 +143,4 @@ export const c =
   MSG_CHOPPER_AT_BASE       : 20,
   MSG_SOLDIERS_TO_CITY      : 21,
   MSG_RESOURCES_AVAIL       : 22, // param A list of Resources
-
 };

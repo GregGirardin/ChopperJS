@@ -44,7 +44,7 @@ export class Tank
     }
   }
 
-  processMessage( e, message, param=None )
+  processMessage( e, message, param=undefined )
   {
     if( message == c.MSG_COLLISION_DET ) { }
   }
