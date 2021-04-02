@@ -1,5 +1,7 @@
 import { c } from './constants.js';
 import { Point, projection, addAngle, dirFromAngle, setRelTheta, getRelTheta, randInt, collisionCheck } from './utils.js';
+import { Missile } from './missiles.js';
+import { Explosion } from './explosions.js';
 
 export class Vehicle
 {
@@ -9,10 +11,9 @@ export class Vehicle
               image : undefined,
               src : "images/vehicles/Jeep.png",
               si : c.SI_JEEP,
-              siMax : c.SI_JEEP,
               damage : 0,
               imgFactor : .5,
-              points : c.POINTS_BOMBER,
+              points : c.POINTS_JEEP,
               spd : c.MAX_JEEP_VEL,
               adjTimeMs : 1000, // average time to recalculate ideal trajectory 
               wheelY : - 5, // all wheel's have the same y
@@ -24,7 +25,6 @@ export class Vehicle
               image : undefined,
               src : "images/vehicles/Transport1.gif",
               si : c.SI_TRANSPORT1,
-              siMax : c.SI_TRANSPORT1,
               damage : 0,
               imgFactor : .5,
               points : c.POINTS_TRANSPORT,
@@ -37,10 +37,9 @@ export class Vehicle
               image : undefined,
               src : "images/vehicles/Transport2.gif",
               si : c.SI_TRANSPORT2,
-              siMax : c.SI_TRANSPORT2,
               damage : 0,
               imgFactor : .4,
-              points : c.POINTS_FIGHTER1,
+              points : c.POINTS_TRANSPORT,
               spd : c.MAX_TRANS2_VEL,
               adjTimeMs : 3000, 
               wheelX : [ 53, 20, -20, -51 ], wheelY : -5, wheelR : 14,
@@ -50,10 +49,9 @@ export class Vehicle
               image : undefined,
               src : "images/vehicles/Truck1.gif",
               si : c.SI_TRUCK,
-              siMax : c.SI_TRUCK,
               damage : 0,
               imgFactor : .4,
-              points : c.POINTS_FIGHTER2,
+              points : c.POINTS_TRUCK,
               spd : c.MAX_TRUCK_VEL,
               adjTimeMs : 500, 
               wheelX : [ 72, -23, -60 ], wheelY : -5, wheelR : 16,
@@ -66,7 +64,6 @@ export class Vehicle
     this.e = e;
     this.oType = type;
     this.si = Vehicle.vehicles[ type ].si;
-    this.siMax = Vehicle.vehicles[ type ].spd;
     this.imgFactor = Vehicle.vehicles[ type ].imgFactor;
     this.spd = Vehicle.vehicles[ type ].spd;
     this.wheelX = Vehicle.vehicles[ type ].wheelX;
@@ -86,21 +83,24 @@ export class Vehicle
       }
   }
 
-  processMessage( message, param=undefined )
+  processMessage( e, msg, param=undefined )
   {
-    if( message == c.MSG_COLLISION_DET )
-      if( param.oType == c.OBJECT_TYPE_WEAPON )
-      {
-        this.showSICount = c.SHOW_SI_COUNT;
-        this.si -= param.wDamage;
-        if( this.si < 0 )
-          this.e.addObject( new SpriteSheet( this.e, "Explosion1", this.p ) );
-       }
+    switch( msg )
+    {
+      case c.MSG_COLLISION_DET:
+
+        if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
+        {
+          this.showSICount = c.SHOW_SI_COUNT;
+          this.si -= param.damage;
+          if( this.si < 0 )
+            e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
+        }
+    }
   }
 
   update( deltaMs )
   {
-    // common update() functionality for all planes
     if( this.si < 0.0 )
     {
       this.e.qMessage( c.MSG_ENEMY_LEFT_BATTLEFIELD, this );
@@ -108,7 +108,7 @@ export class Vehicle
     }
 
     if( this.showSICount > 0 )
-      this.showSICount -= timestamp;
+      this.showSICount -= deltaMs;
 
     this.p.x += this.spd * deltaMs / 1000 * Math.cos( this.bodyAngle );
 

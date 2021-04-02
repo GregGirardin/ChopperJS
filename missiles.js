@@ -1,6 +1,6 @@
 import { c } from './constants.js';
 import { Explosion } from './explosions.js';
-import { projection, Point, Vector, getRelTheta, dirFromAngle, setRelTheta } from './utils.js';
+import { projection, Point, Vector, getRelTheta, dirFromAngle, setRelTheta, randInt } from './utils.js';
 
 export class Missile
 {
@@ -9,34 +9,38 @@ export class Missile
 
   static missiles = 
   {
-    Bullet    : { image : undefined, path : undefined,
+    Bullet :    { image : undefined, path : undefined,
                   damage: c.WEAPON_DAMAGE_BULLET,
                   lifetime : 2000,
                   spd : c.MAX_BULLET_VEL,
                   imgFactor : 1,
                   colRect : [ -.5, .5, .5, -.5 ],
-                  },
-    MissileA  : { image : undefined, path : "images/chopper/missileA.gif",
+                  falltime : 0
+                },
+    MissileA :  { image : undefined, path : "images/chopper/missileA.gif", // smaller, faster
                   damage: c.WEAPON_DAMAGE_MISSLE_A,
-                  lifetime : 2000,
-                  spd : c.MAX_MISSILEA_VEL,
+                  lifetime : 3000,
+                  spd : c.MAX_MISSILE_A_VEL,
                   imgFactor : 1,
                   colRect : [ -.5, .5, -.5, -.5 ],
-                  },
-    MissileB  : { image : undefined, path : "images/chopper/missileB.gif",
+                  falltime : 200
+                },
+    MissileB :  { image : undefined, path : "images/chopper/missileB.gif", // larger
                   damage: c.WEAPON_DAMAGE_MISSLE_B,
-                  lifetime : 4000,
-                  spd : c.MAX_MISSILEB_VEL,
+                  lifetime : 6000,
+                  spd : c.MAX_MISSILE_B_VEL,
                   imgFactor : 1,
                   colRect : [ -.5, .5, -.5, -.5 ],
-                  },
-    Bomb      : { image : undefined, path : "images/chopper/bomb.gif",
-                  damage: c.WEAPON_DAMAGE_MISSLE_B,
+                  falltime : 400
+                },
+    Bomb :      { image : undefined, path : "images/chopper/bomb.gif",
+                  damage: c.WEAPON_DAMAGE_BOMB,
                   lifetime : 0, // just drops.
                   spd : c.GRAVITY_TERM_VEL,
                   imgFactor : .15,
                   colRect : [ -.5, 1, .5, -1 ],
-                  },
+                  falltime : 0
+                },
   }
 
   constructor( e, type, p, bodyAngle, v, owner=undefined )
@@ -48,12 +52,13 @@ export class Missile
     this.v = new Vector( v.xc, v.yc );
     this.owner = owner;
     this.active = true;
+    this.thrust = false; 
 
     this.damage = Missile.missiles[ type ].damage;
     this.lifetime = Missile.missiles[ type ].lifetime;
     this.spd = Missile.missiles[ type ].spd;
     this.colRect = Missile.missiles[ type ].colRect;
-    this.fallTime = 500; // ms to drop before thrust comes on
+    this.fallTime = Missile.missiles[ type ].falltime; // ms to drop before thrust comes on
     this.ticks = 0;
 
     if( type == "Bullet" ) // Bullets don't have to accellerate.
@@ -62,6 +67,7 @@ export class Missile
     if( Missile.firstTime )
     {
       Missile.firstTime = false;
+
       for( const[ k, o ] of Object.entries( Missile.missiles ) )
       {
         Missile.types.push( k );
@@ -80,8 +86,11 @@ export class Missile
     {
       case c.MSG_COLLISION_DET:
         // param is the object that collided with it.
-        e.addObject( new Explosion( this.p ) );
-        this.active = false;
+        if( param.oType != this.owner.oType ) // we hit our parent, ignore this collision
+        {
+          e.addObject( new Explosion( this.e, this.p, "SmokeA" ) );
+          this.active = false;
+        }
         break;
     }
 
@@ -116,9 +125,9 @@ export class Missile
       return false;
     }
 
-    var vp = this.v.getPolar();
-
     this.v.yc -= deltaMs / 10; // tbd, fix. Only increase yc if < terminal velocity
+
+    var vp = this.v.getPolar();
 
     if( vp.mag > c.GRAVITY_TERM_VEL ) // terminal velocity
       vp.mag *= .9; // decelerate
@@ -147,7 +156,7 @@ export class Missile
   {
     if( this.p.y < 0 )
     {
-      this.e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
+      this.e.addObject( new Explosion( this.e, this.p, "Bomb" ) ); // ground explosion
       return false;
     }
 
@@ -171,6 +180,8 @@ export class Missile
     }
     else if( this.ticks > this.lifetime ) // Out of gas, fall to the ground.
     {
+      this.thrust = false;
+
       this.v.yc -= deltaMs / 100;
       let vp = this.v.getPolar();
       if( vp.mag > c.GRAVITY_TERM_VEL )
@@ -182,6 +193,7 @@ export class Missile
     else  // normal operation
     {
       var delta = deltaMs / 20;
+      this.thrust = true;
 
       if( dirFromAngle( this.bodyAngle ) == c.DIR_RIGHT )
       {
@@ -228,6 +240,26 @@ export class Missile
     else
     {
       this.e.ctx.drawImage( this.i, -this.w / 2, -this.h / 2, this.w, this.h );
+
+      if( this.thrust )
+      {
+        // Exhaust. An oval looks pretty good, don't need a sprite.
+        this.e.ctx.fillStyle = 'red';
+        this.e.ctx.beginPath();
+        let offset = this.oType == "MissileA" ? -30 : -40;
+        offset += randInt( -2, 2 );
+        this.e.ctx.ellipse( offset, randInt( -1, 1 ), 10, 2, 0, 0, 2 * c.PI )
+        this.e.ctx.fill();
+
+        // Looks cool to make the above red and add this oval. Comment if CPU gets excessive.
+        this.e.ctx.fillStyle = 'orange';
+        this.e.ctx.beginPath();
+        offset = this.oType == "MissileA" ? -35 : -45;
+        offset += randInt( -2, 2 );
+        this.e.ctx.ellipse( offset, 0, 5, 2, 0, 0, 2 * c.PI );
+        this.e.ctx.fill();
+      }
+
       this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
 
       // shadow

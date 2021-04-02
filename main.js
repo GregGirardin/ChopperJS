@@ -5,7 +5,6 @@ import { Helicopter } from './helicopter.js';
 import { Plane } from './planes.js';
 import { Vehicle } from './vehicles.js';
 import { Tank } from './tank.js';
-// import { Missile } from './missiles.js';
 
 window.onload = gameInit;
 
@@ -32,18 +31,17 @@ class gameEngine
     this.statusMsgCurrent = undefined;
     this.msgQ = []; // Q of messages to loosely couple messaging
     this.newGameTimer = 0;
-    this.currentCamOff = -20; // Start from the left initially to show the City
+    this.currentCamOff = 0; // -20; // Start from the left initially to show the City
     this.showDirections = true;
     this.cityDestroyed = false;
     this.newGame();
-    // hack delay so sprits have time to load. Fix this tbd
+    // hack delay so sprites have time to load. Fix this.
     const date = Date.now();
     let currentDate = null;
     do
     {
       currentDate = Date.now();
-    } while ( currentDate - date < 500 );
-
+    } while ( currentDate - date < 100 );
   }
 
   newGame()
@@ -102,37 +100,34 @@ class gameEngine
 
     this.levelComplete = false;
     this.time = 0;
-    this.bg_objects = []; // Background objects that don't interact with anything.. no collisions or update
-    this.objects = []; // buildings / vehicles / smoke / bullets. Things that require updates and collisions
-    // Two lists to speed up collision detection and other interactions of objects that can interact.
-    // We call update() and check for collisions for objects[]
+    this.objects = []; // world objects
 
     // this.objects.push( new Rectangle( this, new Point( 0, 0, 10), new Point( 50, 0) ) );
 
     // Sky and ground
-    this.bg_objects.push( new SkyGround( this ) );
+    this.objects.push( new SkyGround( this ) );
 
     // Mountain range
-    this.bg_objects.push( new Mtn( this, 200, 0, c.HORIZON_DISTANCE / 2 ) );
-    this.bg_objects.push( new Hill( this, 200, 0, c.HORIZON_DISTANCE / 4 ) );
+    this.objects.push( new Mtn( this, 200, 0, c.HORIZON_DISTANCE / 2 ) );
+    this.objects.push( new Hill( this, 200, 0, c.HORIZON_DISTANCE / 4 ) );
     
-    // Clouds.. clouds move so they're active.
+    // Clouds
     for( z = 1;z < 10;z++ )
-      this.bg_objects.push( new Cloud( this,
-                                       randInt( c.MIN_WORLD_X - 1000, c.MAX_WORLD_X * 2 ),
-                                       randInt( 150, 225 ),
-                                       randInt( 10, c.HORIZON_DISTANCE / 4 ) ) ); // in front of the mountains
+      this.objects.push( new Cloud( this,
+                                    randInt( c.MIN_WORLD_X - 1000, c.MAX_WORLD_X * 2 ),
+                                    randInt( 150, 225 ),
+                                    randInt( 10, c.HORIZON_DISTANCE / 4 ) ) ); // in front of the mountains
     // Rocks
     for( z = 2;z < 22;z += 1 ) // Z is behind projection plane but the math works.
-      this.bg_objects.push( new Rock( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
+      this.objects.push( new Rock( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
 
     // Grass
     for( z = 25;z < 50;z++ )
-      this.bg_objects.push( new Grass( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
+      this.objects.push( new Grass( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
 
     // Trees
-    for( z = 20;z < 200;z += 2 )
-      this.bg_objects.push( new Tree( this, randInt( 20, c.MAX_WORLD_X ), 0, z ) );
+    for( z = 20;z < 500;z += 2 )
+      this.objects.push( new Tree( this, randInt( 40, c.MAX_WORLD_X ), 0, z ) );
 
     // Base - active, update nishes resources
     this.objects.push( new Base( this, 0, 0, 2, "Base" ) );
@@ -147,7 +142,7 @@ class gameEngine
     //this.objects.push( new GameManager( this ) )
 
     this.objects.push( new Plane( this, "Fighter1", 100, 30 ) );
-    this.objects.push( new Plane( this, "Fighter2", 0, 30 ) );
+    this.objects.push( new Plane( this, "Fighter2", 10, 30 ) );
     this.objects.push( new Plane( this, "Bomber1", 20, 30 ) );
     this.objects.push( new Vehicle( this, "Jeep", 100, c.DIR_LEFT ) );
     this.objects.push( new Vehicle( this, "Transport1", c.MIN_WORLD_X ) );
@@ -156,8 +151,7 @@ class gameEngine
     this.objects.push( new Tank( this, -10 ) );
 
     // Sort objects by decreasing Z so closer are drawn on top
-    this.bg_objects.sort( function( a, b ){ return b.p.z - a.p.z } );
-    this.objects.sort( function( a, b ){ return b.p.z - a.p.z } ) ;
+    this.objects.sort( function( a, b ){ return b.p.z - a.p.z } );
   }
 
   // tbd. put new objects in temp list and add all later.
@@ -168,43 +162,26 @@ class gameEngine
     this.objects.sort( function( a, b ){ return b.p.z - a.p.z } );
   }
 
-  addBgObject( newobj )
-  {
-    this.bg_objects.push( newobj );
-    this.bg_objects.sort( function( a, b ){ return b.p.z - a.p.z } );
-  }
-
   update( deltaMs )
   {
     var index1, index2;
 
     // new game timer
 
-    // Collision detection for objects with a colRect
-    // Background objects don't and some active foreground objects don't.
-    // 
+    // Collision detection. Applies to objects with a colRect[].
     for( index1 = 0;index1 < this.objects.length - 1;index1++ )
       for( index2 = index1 + 1;index2 < this.objects.length;index2++ )
       {
         let obj1 = this.objects[ index1 ];
         let obj2 = this.objects[ index2 ];
 
-        if( ( typeof obj1.colRect === 'array' ) && ( typeof obj2.colRect === 'array' ) )
+        if( ( typeof obj1.colRect === 'object' ) && ( typeof obj2.colRect === 'object' ) )
           if( collisionCheck( obj1, obj2 ) )
           {
             obj1.processMessage( this, c.MSG_COLLISION_DET, obj2 );
             obj2.processMessage( this, c.MSG_COLLISION_DET, obj1 );
           }
       }
-
-    // for( index1 = 0;index1 < this.bg_objects.length;index1++ )
-    //   if( typeof this.bg_objects[ index1 ].update === 'function' )
-    //     if( this.bg_objects[ index1 ].update( deltaMs ) == false )
-    //     {
-    //       // Not all background objects have an update
-    //       this.bg_objects.splice( index1, 1 );
-    //       index1--;
-    //     }
       
     for( index1 = 0;index1 < this.objects.length;index1++ )
       if( typeof this.objects[ index1 ].update === 'function' )
@@ -213,6 +190,7 @@ class gameEngine
           this.objects.splice( index1, 1 );
           index1--;
         }
+  
     // move the camera
     var tgtCamXOff;
     switch( this.chopper.chopperDir )
@@ -247,20 +225,6 @@ class gameEngine
   {
     var index, o, p;
 
-    this.ctx.clearRect( 0, 0, this.canvas.width, this.canvas.height );
-
-    for( index = 0;index < this.bg_objects.length;index++ )
-    {
-      o = this.bg_objects[ index ];
-      p = projection( this.camera, o.p );
-      if( p.x < c.SCREEN_WIDTH + c.SCREEN_PAD && p.x > -c.SCREEN_PAD )
-      {
-        o.draw( p );
-        if( this.debugCoords )
-          drawCoords( this, p );
-      }
-    }
-
     for( index = 0;index < this.objects.length;index++ )
     {
       o = this.objects[ index ];
@@ -270,7 +234,7 @@ class gameEngine
         o.draw( p );
         if( this.debugCoords )
         {
-         if( typeof o.colRect === 'array' )
+          if( typeof o.colRect === 'object' )
             displayColRect( this, o );
           drawCoords( this, p );
         }
@@ -282,7 +246,6 @@ class gameEngine
 
   displayDirections()
   {
-
   }
 
   loop( tDeltams ) // the game loop

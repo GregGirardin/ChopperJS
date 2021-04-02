@@ -223,17 +223,12 @@ export function projection( cam, p )
 
   return new Point( xRaster, yRaster, 0 );
 }
+
 // See if these two objects have collided. Objects have a Point p indicating
 // their world position and a colRect tuple indicating the ( x left, y top, x right, y bottom )
 // collision rectangle in relative world coords to p. We assume constant Z and ignore.
 // Collision detection is done using screen coordinates since that's the player sees.
 // and may not correspond perfectly based on sprite shape.
-
-// var foo = 0, foo2 = 0;
-// export function logCollisions()
-// {
-//   foo = 1;
-// }
 
 // returns true of obj's colRect boxes overlap indicating a collision.
 export function collisionCheck( obj1, obj2 )
@@ -247,14 +242,6 @@ export function collisionCheck( obj1, obj2 )
   let l2y = obj2.p.y + obj2.colRect[ 1 ];
   let r2x = obj2.p.x + obj2.colRect[ 2 ];
   let r2y = obj2.p.y + obj2.colRect[ 3 ];
-
-  // if( foo > 0 )
-  // {
-  //   foo--;
-  //   console.log( "---" );
-  //   console.log( l1x, l1y, r1x, r1y );
-  //   console.log( l2x, l2y, r2x, r2y );
-  // }
 
   if( l1x >= r2x || l2x >= r1x || l1y <= r2y || l2y <= r1y )
     return false;
@@ -299,9 +286,20 @@ export function distanceToObjectType( e, xPos, oType )
 {
 }
 
-export function showSI( c, p, o )
+export function showSI( o )
 {
-  if( o.showSICount > 0 ) { }
+  //if( o.showSICount > 0 )
+  {
+    o.e.ctx.fillStyle = 'red';
+    o.e.ctx.beginPath();
+    o.e.ctx.rect( o.p.x - 5, o.p.y - 5, 50, 2 );
+    o.e.ctx.fill();
+
+    o.e.ctx.fillStyle = 'black';
+    o.e.ctx.beginPath();
+    o.e.ctx.rect( o.p.x - 5, o.p.y - 5, 50 * .5, 2 );
+    o.e.ctx.fill();
+  }
 }
 
 export function randInt( min, max )

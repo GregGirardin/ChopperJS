@@ -1,7 +1,7 @@
 import { c } from './constants.js';
-import { Point, projection, addAngle, dirFromAngle, setRelTheta, getRelTheta, randInt } from './utils.js';
-
-// Okabes
+import { Point, projection, addAngle, dirFromAngle, setRelTheta, getRelTheta, showSI, randInt } from './utils.js';
+import { Missile } from './missiles.js';
+import { Explosion } from './explosions.js';
 
 export class Plane
 {
@@ -23,6 +23,7 @@ export class Plane
               maxBodyAngle : .15,
               colRect : [ -7, 0, 7, -2 ],
               },
+
     Bomber2 : {
               image : undefined,
               src : "images/vehicles/Bomber2.gif",
@@ -37,6 +38,7 @@ export class Plane
               maxBodyAngle : .15,
               colRect : [ -7, 0, 7, -2 ],
               },
+
     Fighter1 : {
               image : undefined,
               src : "images/vehicles/Fighter.gif",
@@ -51,6 +53,7 @@ export class Plane
               maxBodyAngle : .2,
               colRect : [ -3, 1, 3, -1 ],
               },
+
     Fighter2 : {
               image : undefined,
               src : "images/vehicles/Jet4.png",
@@ -67,13 +70,16 @@ export class Plane
               },
   }
 
-
   constructor( e, type, x, y, dir=c.DIR_LEFT  )
   {
     this.e = e;
     this.oType = type;
  
-    this.p = new Point( x, y, 1 );
+    this.p = new Point();
+    this.p.x = x;
+    this.p.y = y;
+    this.p.z = 1
+
     this.target_y = y;
     this.time = 0;
     this.bodyAngle = c.PI;
@@ -86,6 +92,7 @@ export class Plane
     this.colRect = Plane.planes[ type ].colRect;
     this.spd = Plane.planes[ type ].spd;
     this.si = Plane.planes[ type ].si;
+    this.showSICount = 0;
 
     if( !Plane.planes.Bomber1.image )
       for( const[ k, o ] of Object.entries( Plane.planes ) )
@@ -95,15 +102,19 @@ export class Plane
       }
   }
 
-  processMessage( message, param=undefined )
+  processMessage( e, msg, param=undefined )
   {
-    if( message == c.MSG_COLLISION_DET )
-      if( param.oType == c.OBJECT_TYPE_WEAPON )
-      {
-        this.si -= param.wDamage;
-        if( this.si < 0 )
-          this.e.objects.push( new SpriteSheet( this.e, "Explosion1", this.p ) );
-       }
+    switch( msg )
+    {
+      case c.MSG_COLLISION_DET:
+        if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
+        {
+          this.showSICount = c.SHOW_SI_COUNT;
+          this.si -= param.damage;
+          if( this.si < 0 )
+            e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
+        }
+    }
   }
 
   update( deltaMs )
@@ -199,10 +210,15 @@ export class Plane
           for( index = 0;index < this.e.objects.length;index++ )
           {
             o = this.e.objects[ index ];
-            if( o.oType == c.OBJECT_TYPE_BUILDING )
+            if( o.oType == "CityBuilding" )
               if( Math.abs( o.p.x - this.p.x ) < 10 )
               {
-                this.e.addObject( new Bomb( this.p, this.v, oType = c.OBJECT_TYPE_E_WEAPON ) );
+                this.e.addObject( new Missile( this.e,
+                                               "Bomb",
+                                               new Point( this.p.x, this.p.y, 1 ),
+                                               this.bodyAngle,
+                                               this.v,
+                                               this ) );
                 this.bombs -= 1;
                 break;
               }
@@ -245,7 +261,12 @@ export class Plane
       if( ( this.v.dx() > 0 && e.chopper.p.x > this.p.x ) ||
           ( this.v.dx() < 0 && e.chopper.p.x < this.p.x ) ) // only shoot if we're going towards the chopper
       {
-        e.addObject( new MissileSmall( this.p, this.v, this.bodyAngle, oType = c.OBJECT_TYPE_E_WEAPON ) );
+        this.e.addObject( new Missile( this.e,
+                                       "MissileA",
+                                       new Point( this.p.x, this.p.y, 1 ),
+                                       this.bodyAngle,
+                                       this.v,
+                                       this ) );
         this.nextMissile = 50 + randInt( 0, 100 );
       }
 
@@ -281,5 +302,7 @@ export class Plane
     this.e.ctx.beginPath();
     this.e.ctx.ellipse( p.x, projShadow.y, this.w/3, 2, 0, 0, 2 * c.PI );
     this.e.ctx.fill();
+
+    showSI( this );
   }
 }

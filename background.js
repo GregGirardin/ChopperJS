@@ -1,5 +1,8 @@
 import { c } from './constants.js';
 import { Point, projection, randInt } from './utils.js';
+import { Missile } from './missiles.js';
+import { Explosion } from './explosions.js';
+import { Helicopter } from './helicopter.js';
 
 // background stuff
 export class SkyGround
@@ -97,7 +100,6 @@ export class Cloud
     this.p = new Point( x, y, z );
     this.w = 0;
     this.h = 0;
-    this.colRect = [ 0, 0, 0, 0 ];
 
     this.imgFactor = 1;
     if( z > 5000 )
@@ -264,6 +266,7 @@ export class Tree
 export class Base
 {
   static img;
+  static BASE_RESUP_INTERVAL = 10 * 1000; // doesn't really need to be in constants.
 
   constructor( e, x, y, z, label=undefined )
   {
@@ -272,8 +275,17 @@ export class Base
     this.p = new Point( x, y, z );
     this.label = label;
     this.imgFactor = .75;
-    this.colRect = [ 0, 0, 0, 0 ];
+    this.colRect = [ -15, 1, 15, 0 ];
 
+    this.resupTimer = Base.BASE_RESUP_INTERVAL; // increase our resources
+    // Base has resources that the Chopper can take when it lands.
+    this.curAmount = { fuel     : Helicopter.resourceMaxAmount.fuel,
+                       SI       : Helicopter.resourceMaxAmount.SI,
+                       bullets  : Helicopter.resourceMaxAmount.bullets,
+                       missileA : Helicopter.resourceMaxAmount.missileA,
+                       missileB : Helicopter.resourceMaxAmount.missileB,
+                       bombs    : Helicopter.resourceMaxAmount.bombs };
+              
     if( !Base.image )
     {
       Base.img = new Image();
@@ -281,19 +293,29 @@ export class Base
     }
   }
 
-  processMessage( e, message, param=None )
+  processMessage( e, msg, param=undefined )
   {
-    if( message == c.MSG_COLLISION_DET )
+    switch( msg )
     {
-      //if param.oType == OBJECT_TYPE_E_WEAPON:
-      this.si -= param.wDamage;
-      if( this.si < 0 )
-        e.objects.push( new Explosion( this.p ) );
+      case c.MSG_COLLISION_DET:
+        break;
     }
   }
 
   update( deltaMs )
   {
+    this.resupTimer -= deltaMs;
+    if( this.resupTimer < 0 )
+    {
+      // right now we replenish 10% of all resources every 10 seconds.
+      // Chopper takes them when it lands here.
+      this.resupTimer = Base.BASE_RESUP_INTERVAL;
+  
+      for( const[ k, o ] of Object.entries( Helicopter.resourceMaxAmount ) )
+        if( this.curAmount[ k ] < Helicopter.resourceMaxAmount[ k ] )
+          this.curAmount[ k ] += Helicopter.resourceMaxAmount[ k ] / 10;
+    }
+
     return true;
   }
 
@@ -326,6 +348,7 @@ class CityBuilding
     [  585,  11,  54, 249 ],
     [  640,  11, 120, 193 ],
     [  882,   6,  51, 328 ],
+  
     // Row 2
     [   20, 291,  77, 396 ],
     [  137, 334,  96, 393 ],
@@ -344,7 +367,6 @@ class CityBuilding
     this.buildIx = buildIx;
     this.si = c.SI_BUILDING;
     this.imgFactor = 1.5;
-    this.colRect = [ 0, 0, 0, 0 ];
 
     this.ix = CityBuilding.imgInfo[ this.buildIx ][ 0 ];
     this.iy = CityBuilding.imgInfo[ this.buildIx ][ 1 ];
@@ -353,6 +375,8 @@ class CityBuilding
     this.w = this.iw * this.imgFactor;
     this.h = this.ih * this.imgFactor;
 
+    this.colRect = [ -this.w / 80, this.h / 17, this.w / 80, 0 ];
+
     if( !CityBuilding.img )
     {
       CityBuilding.img = new Image();
@@ -360,22 +384,27 @@ class CityBuilding
     }
   }
 
-  processMessage( e, message, param=None )
+  processMessage( e, msg, param=undefined )
   {
-    if( message == c.MSG_COLLISION_DET )
+    switch( msg )
     {
-      //if param.oType == OBJECT_TYPE_E_WEAPON:
-      this.si -= param.wDamage;
-      if( this.si < 0 )
-        e.addObject( new Explosion( this.p ) );
+      case c.MSG_COLLISION_DET:
+
+        if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
+        {
+          this.showSICount = c.SHOW_SI_COUNT;
+          this.si -= param.damage;
+          if( this.si < 0 )
+            e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
+        }
     }
   }
 
-  update( e )
+  update( deltaMs )
   {
     if( this.si < 0.0 )
     {
-      e.qMessage( c.MSG_BUILDING_DESTROYED );
+      this.e.qMessage( c.MSG_BUILDING_DESTROYED );
       return false;
     }
     return true
@@ -399,7 +428,7 @@ export function buildCity( e, x, bCount, label=undefined )
     buildIx = randInt( 0, CityBuilding.numBuildings - 1 );
     building = new CityBuilding( e, x, buildIx, label=label );
     e.objects.push( building );
-    x += 2;
+    x += randInt( 5, 8 );
   }
 }
 
@@ -417,6 +446,7 @@ class EBuilding // from miscBuildings.gif
     [  637,  10, 127, 38 ],
     [  507,  51, 173, 63 ],
     [  687,  50,  86, 64 ],
+
     // Row 2
     [    3, 104, 126, 85 ],
     [    3, 104, 126, 85 ],
@@ -425,6 +455,7 @@ class EBuilding // from miscBuildings.gif
     [  523, 121,  54, 74 ],
     [  580, 118,  98, 77 ],
     [  681, 118,  96, 77 ],
+
     // Row 3
     [    3, 193,  90, 67 ],
     [    3, 193,  90, 67 ],
@@ -434,13 +465,13 @@ class EBuilding // from miscBuildings.gif
     [  518, 197,  93, 62 ],
     [  619, 208,  95, 51 ],
     [  715, 208,  68, 51 ],
+  
     // Row 6
     [    4, 427, 120, 47 ],
     [  128, 429, 122, 45 ],
   ];
   
   static img;
-
   static numBuildings = EBuilding.imgInfo.length;
 
   constructor( e, xPos, buildIx, label=undefined )
@@ -448,14 +479,12 @@ class EBuilding // from miscBuildings.gif
     this.e = e;
     this.oType = "EnemyBuilding";
     this.p = new Point( xPos, 0, 3 );
-    this.colRect = undefined; // tbd
     this.label = label;
     this.buildIx = buildIx;
-    this.si = this.siMax = c.SI_E_BUILDING;
+    this.si = c.SI_E_BUILDING;
     this.points = c.POINTS_E_BUILDING;
     this.showSICount = 0;
     this.imgFactor = 2.0;
-    this.colRect = [ 0, 0, 0, 0 ];
 
     this.ix = EBuilding.imgInfo[ this.buildIx ][ 0 ];
     this.iy = EBuilding.imgInfo[ this.buildIx ][ 1 ];
@@ -463,6 +492,8 @@ class EBuilding // from miscBuildings.gif
     this.ih = EBuilding.imgInfo[ this.buildIx ][ 3 ];
     this.w = this.iw * this.imgFactor;
     this.h = this.ih * this.imgFactor;
+  
+    this.colRect = [ -this.w / 50, this.h / 17, this.w / 50, 0 ];
 
     if( !EBuilding.img )
     {
@@ -471,23 +502,27 @@ class EBuilding // from miscBuildings.gif
     }
   }
 
-  processMessage( e, message, param=None )
+  processMessage( e, msg, param=undefined )
   {
-    if( message == c.MSG_COLLISION_DET )
+    switch( msg )
     {
-      this.showSICount = c.SHOW_SI_COUNT;
-      if( param.oType == c.OBJECT_TYPE_WEAPON )
-        this.si -= param.wDamage;
-        //if this.si < 0:
-        //  e.addObject( Explosion( this.p ) )
+      case c.MSG_COLLISION_DET:
+
+        if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
+        {
+          this.showSICount = c.SHOW_SI_COUNT;
+          this.si -= param.damage;
+          if( this.si < 0 )
+            e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
+        }
     }
   }
 
-  update( e )
+  update( deltaMs )
   {
     if( this.si < 0.0 )
     {
-      e.qMessage( c.MSG_E_BUILDING_DESTROYED, this );
+      this.e.qMessage( c.MSG_E_BUILDING_DESTROYED, this );
       return false;
     }
     return true;
@@ -511,7 +546,7 @@ export function buildEBase( e, x, bCount, label=undefined )
     buildIx = randInt( 0, EBuilding.numBuildings - 1 );
     buildObj = new EBuilding( e, x, buildIx, label="Enemy" )
     e.objects.push( buildObj  );
-    x += 4; // adjust pixels to world coords.
+    x += randInt( 7, 15 );
   }
 }
 
@@ -528,8 +563,6 @@ export class Rectangle
     this.h = h;
     this.angle = 0;
   }
-
-  update( tstamp ) { }
 
   draw( p )
   {

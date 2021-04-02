@@ -1,5 +1,5 @@
 import { c } from './constants.js';
-import { Point, projection, setRelTheta, getRelTheta, Vector, dirFromAngle } from './utils.js';
+import { Point, projection, setRelTheta, getRelTheta, Vector, dirFromAngle, showSI } from './utils.js';
 import { Missile } from './missiles.js';
 import { Explosion } from './explosions.js';
 
@@ -7,9 +7,13 @@ export class Helicopter
 {
   static heloForward;
   static heloR;
-  static missileA;
-  static missileB;
-  static bomb;
+
+  static resourceMaxAmount = { fuel     : 1.0,
+                               SI       : c.SI_CHOPPER,
+                               bullets  : c.MAX_BULLETS,
+                               missileA : c.MAX_MISSILE_A,
+                               missileB : c.MAX_MISSILE_B,
+                               bombs    : c.MAX_BOMBS };
 
   constructor( e, x, y, z )
   {
@@ -20,19 +24,21 @@ export class Helicopter
     this.colRect = [ -1, 2, 1, 0 ];
     this.p = new Point( x, y, z );
     this.rotVertex = new Point();
-    this.logVertex = false;
-    this.onGround = false;
     this.rotorTheta = 0.0;
-    this.v = new Vector(); // velocity
+    this.v = new Vector();
     this.tgtXv = 0;
     this.tgtYv = 0;
     this.bodyAngle = 0; // + means down, left or right. This does not indicate direction
     this.chopperDir = c.DIR_FWD;
-    this.weapon = c.WEAPON_NONE; // This gets set and then fired in the next update()
-                                 // Trying to keep msg processing loosely coupled.
-    // c.RESOURCEs / weapons. See c.RESOURCE_XYZ
-    this.maxAmount = [ 100.0, c.MAX_BULLETS, c.MAX_S_MISSILES, c.MAX_L_MISSILES, c.MAX_BOMBS, c.SI_CHOPPER ];
-    this.curAmount = [ 100.0, c.MAX_BULLETS, c.MAX_S_MISSILES, c.MAX_L_MISSILES, c.MAX_BOMBS, c.SI_CHOPPER ];
+    this.weapon = undefined; // This gets set and then fired in the next update()
+                             // Trying to keep msg processing loosely coupled.
+    this.curAmount = { fuel     : Helicopter.resourceMaxAmount.fuel,
+                       SI       : Helicopter.resourceMaxAmount.SI,
+                       bullets  : Helicopter.resourceMaxAmount.bullets,
+                       missileA : Helicopter.resourceMaxAmount.missileA,
+                       missileB : Helicopter.resourceMaxAmount.missileB,
+                       bombs    : Helicopter.resourceMaxAmount.bombs };
+
     this.bulletRdyCounter = 0;
     this.displayStickCount = 0;
     this.imgFactor = 1;
@@ -41,15 +47,9 @@ export class Helicopter
     {
       Helicopter.heloForward  = new Image();
       Helicopter.heloR        = new Image();
-      Helicopter.missileA     = new Image(); // to display inventory.
-      Helicopter.missileB     = new Image();
-      Helicopter.bomb         = new Image();
 
       Helicopter.heloForward.src  = "./images/chopper/bodyForward.gif";
       Helicopter.heloR.src        = "./images/chopper/bodyRight.gif";
-      Helicopter.missileA.src     = "./images/chopper/missileA.gif";
-      Helicopter.missileB.src     = "./images/chopper/missileB.gif";
-      Helicopter.bomb.src         = "./images/chopper/bomb.gif";
     }
   } 
 
@@ -64,7 +64,6 @@ export class Helicopter
         {
           case "ArrowRight":
             if( this.p.y > 0 )
-            {
               if( this.tgtXv < 0 )
               {
                 this.tgtXv += c.MAX_C_X_VEL / 2;
@@ -86,13 +85,10 @@ export class Helicopter
                 if( this.tgtXv > c.MAX_C_X_VEL )
                   this.tgtXv = c.MAX_C_X_VEL;
               }
-
-            }
             break;
           
           case "ArrowLeft":
             if( this.p.y > 0 )
-            {
               if( this.tgtXv > 0 )
               {
                 this.tgtXv -= c.MAX_C_X_VEL / 2;
@@ -114,7 +110,6 @@ export class Helicopter
                 if( this.tgtXv < -c.MAX_C_X_VEL )
                   this.tgtXv = -c.MAX_C_X_VEL;
               }
-            }
             break;
 
           case "ArrowUp":
@@ -129,10 +124,41 @@ export class Helicopter
               this.tgtYv = c.MIN_Y_VEL;
             break;
 
-          case " ": this.weapon = "Bullet"; break;
-          case "a": this.weapon = "MissileA"; break;
-          case "s": this.weapon = "MissileB"; break;
-          case "z": this.weapon = "Bomb"; break;
+          ////////////////// ////////////////// //////////////////
+          ////////////////// ////////////////// //////////////////
+
+          case " ":
+            if( ( this.bulletRdyCounter <= 0 ) && ( this.curAmount.bullets > 0 ) )
+            {
+              this.curAmount.bullets--;
+              this.weapon = "Bullet";
+              this.bulletRdyCounter = c.BULLET_WAIT_TIME;
+            }
+           break;
+
+          case "a":
+            if ( this.curAmount.missileA > 0 )
+            {
+              this.curAmount.missileA--;
+              this.weapon = "MissileA";
+            }
+            break;
+
+          case "s":
+            if ( this.curAmount.missileB > 0 )
+            {
+              this.curAmount.missileB--;
+              this.weapon = "MissileB";
+            }
+            break;
+
+          case "z":
+            if ( this.curAmount.bombs > 0 )
+            {
+              this.curAmount.bombs--;
+              this.weapon = "Bomb";
+            }
+            break;
           }
         break;
 
@@ -144,41 +170,29 @@ export class Helicopter
         {
           if( param.owner.oType != this.oType ) // one of our own?
           {
-            this.curAmount[ c.RESOURCE_SI ] -= param.wDamage;
+            this.curAmount[ "SI" ] -= param.wDamage;
+          }
+        }
+        else if( param.oType == "Base" )
+        {
+          for( const[ k, o ] of Object.entries( Helicopter.resourceMaxAmount ) )
+          {
+            let wantedAmt, availAmt;
+
+            wantedAmt = Helicopter.resourceMaxAmount[ k ] - this.curAmount[ k ];
+            availAmt = param.curAmount[ k ];
+            var takeAmt = ( wantedAmt < availAmt ) ? wantedAmt : availAmt;
+            param.curAmount[ k ] -= takeAmt;
+            this.curAmount[ k ] += takeAmt;
           }
         }
         break;
-
-      case c.MSG_RESOURCES_AVAIL:
-        // param is a list of c.RESOURCE amounts available that we will mutate
-        var r;
-
-        for( r = c.RESOURCE_FUEL;r < c.RESOURCE_COUNT;r++ )
-        {
-          var wantedAmt;
-
-          wantedAmt = this.maxAmount[ r ] - this.curAmount[ r ];
-          if( wantedAmt > 0.0 && param[ r ] > 1.0 ) // We want some of this c.RESOURCE
-          {
-            if( wantedAmt > param[ r ] )
-            {
-              this.curAmount[ r ] += param[ r ];
-              param[ r ] = 0.0; // take it all
-            }
-            else
-            {
-              this.curAmount[ r ] += wantedAmt;
-              param[ r ] -= wantedAmt;
-            }
-          }
-        }
-      break;
     }
   }
 
   update( deltaMs )
   {
-    if( this.curAmount[ c.RESOURCE_SI ] < 0 )
+    if( this.curAmount.SI < 0 )
     {
       this.e.qMessage( c.MSG_CHOPPER_DESTROYED, this );
       return False;
@@ -189,23 +203,17 @@ export class Helicopter
       var bodyAngle;
       switch( this.chopperDir )
       {
-        case c.DIR_RIGHT:
-          bodyAngle = 0;
-          break;
-        case c.DIR_LEFT:
-          bodyAngle = c.PI;
-          break;
-        case c.DIR_FWD:
-          bodyAngle = -c.PI / 2;
-          break;
+        case c.DIR_RIGHT: bodyAngle = 0;          break;
+        case c.DIR_LEFT:  bodyAngle = c.PI;       break;
+        case c.DIR_FWD:   bodyAngle = -c.PI / 2;  break;
       }
       if( this.chopperDir != c.DIR_FWD || this.weapon == "Bomb" )
-        this.e.objects.push( new Missile( this.e,
-                                          this.weapon,
-                                          new Point( this.p.x, this.p.y, 1 ),
-                                          bodyAngle,
-                                          this.v,
-                                          this ) );
+        this.e.addObject( new Missile( this.e,
+                                       this.weapon,
+                                       new Point( this.p.x, this.p.y, 1 ),
+                                       bodyAngle,
+                                       this.v,
+                                       this ) );
       this.weapon = undefined;
     }
 
@@ -241,20 +249,20 @@ export class Helicopter
       this.v.yc = 0;
     }
 
-    // figure out angle. + is down' from level. Accel +20deg, maintain dir +10, decel -10, idle 0
-    const a20 = -.35; // 20 degres in radians.
-    const a10 = -.175;
+    // figure out angle. + is down from level. Accel +20deg, maintain dir +10, decel -10, idle 0
+    const aSteep = -.35; // 20 degres in radians.
+    const aSleight = -.175;
     let tgtAngle = 0.0;
 
     if( Math.abs( this.v.xc - this.tgtXv ) < c.EFFECTIVE_ZERO )
     {
       if( Math.abs( this.tgtXv ) > 0)
-        tgtAngle = a10; // maintain speed. We're at tgtVel
+        tgtAngle = aSleight; // maintain speed. We're at tgtVel
     }
     else if( this.chopperDir == c.DIR_RIGHT )
-      tgtAngle = ( this.v.xc < this.tgtXv ) ? a20 : -a10;
+      tgtAngle = ( this.v.xc < this.tgtXv ) ? aSteep : -aSleight;
     else if( this.chopperDir == c.DIR_LEFT ) // going left
-      tgtAngle = ( this.v.xc > this.tgtXv ) ? a20 : -a10;
+      tgtAngle = ( this.v.xc > this.tgtXv ) ? aSteep : -aSleight;
 
     if( this.bodyAngle < tgtAngle - c.EFFECTIVE_ZERO )
       this.bodyAngle += .02; // tbd, adjust for timedelta
@@ -264,10 +272,17 @@ export class Helicopter
     // Spin the rotors
     let rotorSpeed = 1; // default, slow spin
 
-    if( tgtAngle == a20 )
+    if( tgtAngle == aSteep )
+    {
+      this.curAmount.fuel -= .01 * deltaMs / 1000;
       rotorSpeed = 3;
-    else if( ( tgtAngle == a10 ) || ( this.tgtYv > 0 ) )
+    }
+    else if( ( tgtAngle == aSleight ) || ( this.tgtYv > 0 ) )
+    {
+      this.curAmount.fuel -= .005 * deltaMs / 1000;
       rotorSpeed = 2;
+    }
+  
     this.rotorTheta += rotorSpeed * deltaMs / 100;
     if( this.rotorTheta > 2 * c.PI )
       this.rotorTheta -= 2 * c.PI ;
@@ -275,8 +290,7 @@ export class Helicopter
 
   draw( p )
   {
-    var projShadow, hImg,
-        xlate = new( Point ); // translation of the objects postion from p
+    var projShadow, hImg, xlate = new( Point ); // translation of the objects postion from p
 
     xlate.x = 0;
     xlate.y = 0;
@@ -304,7 +318,7 @@ export class Helicopter
     this.e.ctx.rotate( -this.bodyAngle );
     this.e.ctx.lineWidth = 2;
 
-    // tail rotor. Draw behind body, looks cleaner.
+    // Tail rotor. Draw behind body, looks cleaner.
     if( this.chopperDir != c.DIR_FWD )
     {
       this.e.ctx.strokeStyle = 'black';
@@ -352,8 +366,20 @@ export class Helicopter
     this.e.ctx.ellipse( p.x + offset, projShadow.y, w/3, 2, 0, 0, 2 * c.PI )
     this.e.ctx.fill();
 
-    // fuel
-    // structural integ
-    // weapons
+    // fuel, structure, weapons...
+    let index = 0;
+    for( const[ k, o ] of Object.entries( Helicopter.resourceMaxAmount ) )
+    {
+      this.e.ctx.fillStyle = 'red';
+      this.e.ctx.beginPath();
+      this.e.ctx.rect( 10, 10 + index * 5, 50, 4 );
+      this.e.ctx.fill();
+
+      this.e.ctx.fillStyle = 'black';
+      this.e.ctx.beginPath();
+      this.e.ctx.rect( 10, 10 + index * 5, 50 * this.curAmount[ k ] / Helicopter.resourceMaxAmount[ k ], 4 );
+      this.e.ctx.fill();
+      index++;
+    }
   }
 }

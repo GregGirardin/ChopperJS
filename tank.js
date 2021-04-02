@@ -1,6 +1,7 @@
-
 import { c } from './constants.js';
 import { Point, projection, addAngle, dirFromAngle, setRelTheta, getRelTheta, randInt } from './utils.js';
+import { Missile } from './missiles.js';
+import { Explosion } from './explosions.js';
 
 const S = // Tank operational states
 {
@@ -23,7 +24,7 @@ export class Tank
     this.p = new Point( x, 0, 1 );
     this.colRect = [ -4, 4, 4, 0 ];
     this.cannonAngle = .1; // relative angle 'up' from level (left or right)
-    this.si = this.siMax = c.SI_TANK;
+    this.si = c.SI_TANK;
     this.points = c.POINTS_TANK;
     this.showSICount = 0;
     this.state = S.TANK_STATE_GUARD; // use a bit of a state machine for tank AI
@@ -44,16 +45,26 @@ export class Tank
     }
   }
 
-  processMessage( e, message, param=undefined )
+  processMessage( e, msg, param=undefined )
   {
-    if( message == c.MSG_COLLISION_DET ) { }
+    switch( msg )
+    {
+      case c.MSG_COLLISION_DET:
+        if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
+        {
+          this.showSICount = c.SHOW_SI_COUNT;
+          this.si -= param.damage;
+          if( this.si < 0 )
+            e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
+        }
+    }
   }
 
   update( deltaMs )
   {
     if( this.si < 0 )
     {
-      e.qMessage( c.MSG_ENEMY_LEFT_BATTLEFIELD, this );
+      this.e.qMessage( c.MSG_ENEMY_LEFT_BATTLEFIELD, this );
       return false;
     }
 
@@ -172,20 +183,13 @@ export class Tank
     if( dirFromAngle( this.bodyAngle ) == c.DIR_LEFT )
       wheelRot *= -1;
 
-    const wheelX = [ -57 * this.f,
-                     -37 * this.f,
-                     -17 * this.f,
-                       1 * this.f,
-                      20 * this.f,
-                      40 * this.f,
-                      60 * this.f ];
+    const wheelX = [ -57 * this.f, -37 * this.f, -17 * this.f, 1 * this.f, 20 * this.f, 40 * this.f, 60 * this.f ];
     var index;
     for( index = 0;index < wheelX.length;index++ )
       this.drawWheel( wheelX[ index ], -8 * this.f, 9 * this.f, wheelRot );
-
     this.drawWheel( -75 * this.f, -20 * this.f, 12 * this.f, wheelRot * .7 );
 
-    // draw the track.
+    // The track.
     const rLen = 80 * Math.cos( this.rotorTheta );
     this.e.ctx.strokeStyle = 'black';
     this.e.ctx.beginPath();
