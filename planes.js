@@ -86,12 +86,15 @@ export class Plane
     this.tgtBodyAngle = c.PI; // what angle do we want to be at, bodyAngle will adjust to this over a short time.
     this.nextAngleAdjustMs = 2000;
 
-    this.turnDelta = Plane.planes[ type ].turnDelta; // for fighers, when do they turn around.
-    this.maxBodyAngle = Plane.planes[ type ].maxBodyAngle;
-    this.adjTimeMs = Plane.planes[ type ].adjTimeMs;
-    this.colRect = Plane.planes[ type ].colRect;
-    this.spd = Plane.planes[ type ].spd;
-    this.si = Plane.planes[ type ].si;
+    let p = Plane.planes[ type ];
+
+    this.turnDelta = p.turnDelta; // for fighers, when do they turn around.
+    this.maxBodyAngle = p.maxBodyAngle;
+    this.adjTimeMs = p.adjTimeMs;
+    this.colRect = p.colRect;
+    this.spd = p.spd;
+    this.max_si = this.si = p.si;
+    this.points = p.points;
     this.showSICount = 0;
 
     if( !Plane.planes.Bomber1.image )
@@ -122,7 +125,7 @@ export class Plane
     // common update() functionality for all planes
     if( this.si < 0.0 )
     {
-      this.e.qMessage( c.MSG_ENEMY_LEFT_BATTLEFIELD, this );
+      this.e.qMessage( { m: c.MSG_ENEMY_LEFT_BATTLEFIELD, p : this } );
       return false;
     }
 
@@ -176,7 +179,7 @@ export class Plane
       if( this.e.cityDestroyed )
       {
         this.e.addStatusMessage( "Bomber Left Theater" );
-        this.e.qMessage( c.MSG_ENEMY_LEFT_BATTLEFIELD, this );
+        this.e.qMessage( { m: c.MSG_ENEMY_LEFT_BATTLEFIELD, p : this } );
         return false;
       }
       this.target_y = randInt( 10, 30 );
@@ -193,10 +196,8 @@ export class Plane
         // adjust angle to reach target y
         if( Math.abs( this.p.y - this.target_y ) > .5 ) // not at target y
         {
-          if( this.p.y < this.target_y )
-            this.tgtBodyAngle = setRelTheta( this.tgtBodyAngle, this.maxBodyAngle );
-          else
-            this.tgtBodyAngle = setRelTheta( this.tgtBodyAngle, -this.maxBodyAngle );
+          this.tgtBodyAngle = setRelTheta( this.tgtBodyAngle,
+                                           this.p.y < this.target_y ? this.maxBodyAngle : -this.maxBodyAngle );
           this.nextAngleAdjustMs = 200; // check often until at target y
         }
         else
@@ -213,12 +214,8 @@ export class Plane
             if( o.oType == "CityBuilding" )
               if( Math.abs( o.p.x - this.p.x ) < 10 )
               {
-                this.e.addObject( new Missile( this.e,
-                                               "Bomb",
-                                               new Point( this.p.x, this.p.y, 1 ),
-                                               this.bodyAngle,
-                                               this.v,
-                                               this ) );
+                this.e.addObject( new Missile( this.e, "Bomb", new Point( this.p.x, this.p.y, 1 ),
+                                               this.bodyAngle, this.v, this ) );
                 this.bombs -= 1;
                 break;
               }
@@ -261,12 +258,8 @@ export class Plane
       if( ( this.v.dx() > 0 && e.chopper.p.x > this.p.x ) ||
           ( this.v.dx() < 0 && e.chopper.p.x < this.p.x ) ) // only shoot if we're going towards the chopper
       {
-        this.e.addObject( new Missile( this.e,
-                                       "MissileA",
-                                       new Point( this.p.x, this.p.y, 1 ),
-                                       this.bodyAngle,
-                                       this.v,
-                                       this ) );
+        this.e.addObject( new Missile( this.e, "MissileA", new Point( this.p.x, this.p.y, 1 ),
+                                       this.bodyAngle, this.v, this ) );
         this.nextMissile = 50 + randInt( 0, 100 );
       }
 
@@ -303,6 +296,7 @@ export class Plane
     this.e.ctx.ellipse( p.x, projShadow.y, this.w/3, 2, 0, 0, 2 * c.PI );
     this.e.ctx.fill();
 
-    showSI( this );
+    if( this.showSICount > 0 )
+      showSI( this.e, p, this.si / this.max_si );
   }
 }

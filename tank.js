@@ -1,9 +1,9 @@
 import { c } from './constants.js';
-import { Point, projection, addAngle, dirFromAngle, setRelTheta, getRelTheta, randInt } from './utils.js';
+import { Point, dirFromAngle, showSI } from './utils.js';
 import { Missile } from './missiles.js';
 import { Explosion } from './explosions.js';
 
-const S = // Tank operational states
+const S = // Tank operational State Machine.
 {
   TANK_STATE_MOVE_TO_ATK  : 0,  // go to building
   TANK_STATE_ATK_CHOPPER  : 1,  // Helo present. Engage
@@ -24,14 +24,13 @@ export class Tank
     this.p = new Point( x, 0, 1 );
     this.colRect = [ -4, 4, 4, 0 ];
     this.cannonAngle = .1; // relative angle 'up' from level (left or right)
-    this.si = c.SI_TANK;
+    this.max_si = this.si = c.SI_TANK;
     this.points = c.POINTS_TANK;
     this.showSICount = 0;
     this.state = S.TANK_STATE_GUARD; // use a bit of a state machine for tank AI
     this.smTimer = 2000; // run the state machine once in a while
     this.wDamage = 0; // it damages by shooting..
     this.bodyAngle = c.PI;
-    this.firstTime = true;
     this.spd = c.MAX_TANK_VEL;
     this.f = .9; // image scale factor
 
@@ -64,7 +63,7 @@ export class Tank
   {
     if( this.si < 0 )
     {
-      this.e.qMessage( c.MSG_ENEMY_LEFT_BATTLEFIELD, this );
+      this.e.qMessage( { m: c.MSG_ENEMY_LEFT_BATTLEFIELD, p : this } );
       return false;
     }
 
@@ -202,6 +201,9 @@ export class Tank
     // the tank body
     this.e.ctx.drawImage( this.i, -this.w / 2, -this.h, this.w, this.h );
     this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
+
+    if( this.showSICount > 0 )
+      showSI( this.e, p, this.si / this.max_si );
   }
 
 }

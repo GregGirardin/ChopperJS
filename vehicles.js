@@ -1,5 +1,5 @@
 import { c } from './constants.js';
-import { Point, projection, addAngle, dirFromAngle, setRelTheta, getRelTheta, randInt, collisionCheck } from './utils.js';
+import { Point, projection, dirFromAngle, showSI } from './utils.js';
 import { Missile } from './missiles.js';
 import { Explosion } from './explosions.js';
 
@@ -63,14 +63,15 @@ export class Vehicle
   {
     this.e = e;
     this.oType = type;
-    this.si = Vehicle.vehicles[ type ].si;
-    this.imgFactor = Vehicle.vehicles[ type ].imgFactor;
-    this.spd = Vehicle.vehicles[ type ].spd;
-    this.wheelX = Vehicle.vehicles[ type ].wheelX;
-    this.wheelY = Vehicle.vehicles[ type ].wheelY;
-    this.wheelR = Vehicle.vehicles[ type ].wheelR;
-    this.wheelcolRectR = Vehicle.vehicles[ type ].colRect;
-    this.colRect = Vehicle.vehicles[ type ].colRect;
+    let v = Vehicle.vehicles[ type ];
+    this.imgFactor = v.imgFactor;
+    this.max_si = this.si = v.si;
+    this.spd = v.spd;
+    this.wheelX = v.wheelX;
+    this.wheelY = v.wheelY;
+    this.wheelR = v.wheelR;
+    this.colRect = v.colRect;
+    this.points = v.points;
     this.p = new Point( x, 0, 2 );
     this.showSICount = 0;
     this.bodyAngle = ( dir == c.DIR_LEFT ) ? c.PI : 0;
@@ -93,7 +94,7 @@ export class Vehicle
         {
           this.showSICount = c.SHOW_SI_COUNT;
           this.si -= param.damage;
-          if( this.si < 0 )
+          if( this.si <= 0 )
             e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
         }
     }
@@ -101,9 +102,9 @@ export class Vehicle
 
   update( deltaMs )
   {
-    if( this.si < 0.0 )
+    if( this.si <= 0.0 )
     {
-      this.e.qMessage( c.MSG_ENEMY_LEFT_BATTLEFIELD, this );
+      this.e.qMessage( { m: c.MSG_ENEMY_LEFT_BATTLEFIELD, p : this } );
       return false;
     }
 
@@ -176,7 +177,7 @@ export class Vehicle
       theta = -theta;
 
     this.e.ctx.rotate( theta );
-    
+
     var index;
     for( index = 0;index < this.wheelX.length;index++ )
       this.drawWheel( this.wheelX[ index ], this.wheelY, this.wheelR, wheelRot );
@@ -190,5 +191,8 @@ export class Vehicle
     this.e.ctx.beginPath();
     this.e.ctx.ellipse( p.x, projShadow.y, this.w/3, 2, 0, 0, 2 * c.PI )
     this.e.ctx.fill();
+
+    if( this.showSICount > 0 )
+      showSI( this.e, p, this.si / this.max_si );
   }
 }

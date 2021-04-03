@@ -88,16 +88,16 @@ export const c =
   SI_TANK       : 150.0,
 
   // points
-  POINTS_JEEP       : 5,
-  POINTS_TRUCK      : 10,
-  POINTS_TRANSPORT  : 15,
-  POINTS_TANK       : 15,
-  POINTS_BOMBER     : 20,
-  POINTS_FIGHTER1   : 50,
-  POINTS_FIGHTER2   : 100,
-  POINTS_E_BUILDING : 10, // enemy base building.
-  POINTS_E_BASE     : 50,
-  POINTS_BUILDING   : 15, // city buildings not bombed after level complete
+  POINTS_JEEP       : 1,
+  POINTS_TRUCK      : 2,
+  POINTS_TRANSPORT  : 2,
+  POINTS_TANK       : 5,
+  POINTS_BOMBER     : 5,
+  POINTS_FIGHTER1   : 10,
+  POINTS_FIGHTER2   : 10,
+  POINTS_E_BUILDING : 1, // enemy base building.
+  POINTS_E_BASE     : 10,
+  POINTS_BUILDING   : 1, // city buildings not bombed after level complete
 
   // Full weapon payload.
   MAX_MISSILE_A     : 20.0,

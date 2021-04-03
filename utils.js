@@ -286,20 +286,17 @@ export function distanceToObjectType( e, xPos, oType )
 {
 }
 
-export function showSI( o )
+export function showSI( e, p, pct )
 {
-  //if( o.showSICount > 0 )
-  {
-    o.e.ctx.fillStyle = 'red';
-    o.e.ctx.beginPath();
-    o.e.ctx.rect( o.p.x - 5, o.p.y - 5, 50, 2 );
-    o.e.ctx.fill();
+  e.ctx.fillStyle = 'red';
+  e.ctx.beginPath();
+  e.ctx.rect( p.x - 50, p.y - 15, 100, 3 );
+  e.ctx.fill();
 
-    o.e.ctx.fillStyle = 'black';
-    o.e.ctx.beginPath();
-    o.e.ctx.rect( o.p.x - 5, o.p.y - 5, 50 * .5, 2 );
-    o.e.ctx.fill();
-  }
+  e.ctx.fillStyle = 'black';
+  e.ctx.beginPath();
+  e.ctx.rect( p.x - 50, p.y - 15, 100 * pct, 2 );
+  e.ctx.fill();
 }
 
 export function randInt( min, max )

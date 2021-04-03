@@ -1,5 +1,5 @@
 import { c } from './constants.js';
-import { Point, projection, randInt } from './utils.js';
+import { Point, projection, randInt, showSI } from './utils.js';
 import { Missile } from './missiles.js';
 import { Explosion } from './explosions.js';
 import { Helicopter } from './helicopter.js';
@@ -274,17 +274,18 @@ export class Base
     this.oType = "Base";
     this.p = new Point( x, y, z );
     this.label = label;
-    this.imgFactor = .75;
-    this.colRect = [ -15, 1, 15, 0 ];
+    this.imgFactor = .6;
+    this.colRect = [ -12, 1, 12, 0 ];
 
     this.resupTimer = Base.BASE_RESUP_INTERVAL; // increase our resources
     // Base has resources that the Chopper can take when it lands.
-    this.curAmount = { fuel     : Helicopter.resourceMaxAmount.fuel,
-                       SI       : Helicopter.resourceMaxAmount.SI,
-                       bullets  : Helicopter.resourceMaxAmount.bullets,
-                       missileA : Helicopter.resourceMaxAmount.missileA,
-                       missileB : Helicopter.resourceMaxAmount.missileB,
-                       bombs    : Helicopter.resourceMaxAmount.bombs };
+    let r = Helicopter.resourceMaxAmount;
+    this.curAmount = { fuel     : r.fuel,
+                       SI       : r.SI,
+                       bullets  : r.bullets,
+                       missileA : r.missileA,
+                       missileB : r.missileB,
+                       bombs    : r.bombs };
               
     if( !Base.image )
     {
@@ -366,6 +367,7 @@ class CityBuilding
     this.label = label;
     this.buildIx = buildIx;
     this.si = c.SI_BUILDING;
+    this.max_si = c.SI_BUILDING;
     this.imgFactor = 1.5;
 
     this.ix = CityBuilding.imgInfo[ this.buildIx ][ 0 ];
@@ -404,9 +406,13 @@ class CityBuilding
   {
     if( this.si < 0.0 )
     {
-      this.e.qMessage( c.MSG_BUILDING_DESTROYED );
+      this.e.qMessage( { m: c.MSG_BUILDING_DESTROYED, p : undefined } );
       return false;
     }
+   
+    if( this.showSICount > 0 )
+      this.showSICount -= deltaMs;
+   
     return true
   }
 
@@ -416,6 +422,9 @@ class CityBuilding
                           this.ix, this.iy, this.iw, this.ih, // source rectangle
                           p.x - this.w / 2, p.y - this.h,
                           this.w, this.h );
+
+    if( this.showSICount > 0 )
+      showSI( this.e, p, this.si / this.max_si );
   }
 }
 
@@ -482,6 +491,7 @@ class EBuilding // from miscBuildings.gif
     this.label = label;
     this.buildIx = buildIx;
     this.si = c.SI_E_BUILDING;
+    this.max_si = this.si;
     this.points = c.POINTS_E_BUILDING;
     this.showSICount = 0;
     this.imgFactor = 2.0;
@@ -522,9 +532,13 @@ class EBuilding // from miscBuildings.gif
   {
     if( this.si < 0.0 )
     {
-      this.e.qMessage( c.MSG_E_BUILDING_DESTROYED, this );
+      this.e.processMessage( c.MSG_E_BUILDING_DESTROYED, this );
       return false;
     }
+
+    if( this.showSICount > 0 )
+      this.showSICount -= deltaMs;
+
     return true;
   }
 
@@ -534,6 +548,8 @@ class EBuilding // from miscBuildings.gif
                           this.ix, this.iy, this.iw, this.ih, // source rectangle
                           p.x - this.w / 2, p.y - this.h, // x, y
                           this.w, this.h ); // w, h
+    if( this.showSICount > 0 )
+      showSI( this.e, p, this.si / this.max_si );
   }
 }
 
@@ -550,40 +566,38 @@ export function buildEBase( e, x, bCount, label=undefined )
   }
 }
 
-export class Rectangle
-{
-  constructor( e, p, v, w=200, h=100 )
-  {
-    this.e = e;
-    this.p = p;
-    this.v = v; // the vertex we wish to rotate around. (0,0) is the center
-    this.oType = "Rectangle";
-    this.imgFactor = 1;
-    this.w = w;
-    this.h = h;
-    this.angle = 0;
-  }
+// export class Rectangle
+// {
+//   constructor( e, p, v, w=200, h=100 )
+//   {
+//     this.e = e;
+//     this.p = p;
+//     this.v = v; // the vertex we wish to rotate around. (0,0) is the center
+//     this.oType = "Rectangle";
+//     this.imgFactor = 1;
+//     this.w = w;
+//     this.h = h;
+//     this.angle = 0;
+//   }
 
-  draw( p )
-  {
-    this.e.ctx.strokeStyle = 'red';
-    this.e.ctx.translate( p.x + this.v.x, p.y - this.v.y );
-    this.e.ctx.rotate( this.angle );
+//   draw( p )
+//   {
+//     this.e.ctx.strokeStyle = 'red';
+//     this.e.ctx.translate( p.x + this.v.x, p.y - this.v.y );
+//     this.e.ctx.rotate( this.angle );
 
-    this.e.ctx.beginPath();
-    this.e.ctx.rect( -this.w/2 - this.v.x,
-                     -this.w/2 + this.v.y,
-                      this.w, this.h );
-    this.e.ctx.stroke();
+//     this.e.ctx.beginPath();
+//     this.e.ctx.rect( -this.w/2 - this.v.x, -this.w/2 + this.v.y, this.w, this.h );
+//     this.e.ctx.stroke();
 
-    // draw vertex that we want to rotate around, 0,0 is the center of the object.
-    this.e.ctx.beginPath();
-    this.e.ctx.arc( 0, 0, 5, 0, 2 * Math.PI );
-    this.e.ctx.fillStyle = '#000000';
-    this.e.ctx.fill();
-    this.e.ctx.stroke();
+//     // draw vertex that we want to rotate around, 0,0 is the center of the object.
+//     this.e.ctx.beginPath();
+//     this.e.ctx.arc( 0, 0, 5, 0, 2 * Math.PI );
+//     this.e.ctx.fillStyle = '#000000';
+//     this.e.ctx.fill();
+//     this.e.ctx.stroke();
 
-    // Reset transformation matrix
-    this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
-  }
-}
+//     // Reset transformation matrix
+//     this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
+//   }
+// }

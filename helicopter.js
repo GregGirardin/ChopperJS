@@ -159,6 +159,10 @@ export class Helicopter
               this.weapon = "Bomb";
             }
             break;
+
+          case "?":
+            this.e.showDirections = !this.e.showDirections;
+            break;
           }
         break;
 
