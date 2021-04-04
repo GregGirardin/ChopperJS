@@ -1,5 +1,5 @@
 import { c } from './constants.js';
-import { Point, projection, addAngle, dirFromAngle, setRelTheta, getRelTheta, showSI, randInt } from './utils.js';
+import { Point, Vector, projection, dirFromAngle, setRelTheta, getRelTheta, showSI, randInt } from './utils.js';
 import { Missile } from './missiles.js';
 import { Explosion } from './explosions.js';
 
@@ -36,7 +36,7 @@ export class Plane
               adjTimeMs : 3000, 
               turnDelta : undefined,
               maxBodyAngle : .15,
-              colRect : [ -7, 0, 7, -2 ],
+              colRect : [ -8, 0, 7, -3.5 ],
               },
 
     Fighter1 : {
@@ -74,27 +74,23 @@ export class Plane
   {
     this.e = e;
     this.oType = type;
- 
-    this.p = new Point();
-    this.p.x = x;
-    this.p.y = y;
-    this.p.z = 1
-
+    this.p = new Point( x, y , 1);
     this.target_y = y;
-    this.time = 0;
     this.bodyAngle = c.PI;
     this.tgtBodyAngle = c.PI; // what angle do we want to be at, bodyAngle will adjust to this over a short time.
     this.nextAngleAdjustMs = 2000;
 
     let p = Plane.planes[ type ];
-
     this.turnDelta = p.turnDelta; // for fighers, when do they turn around.
     this.maxBodyAngle = p.maxBodyAngle;
     this.adjTimeMs = p.adjTimeMs;
+    this.bombs = p.bombs;
     this.colRect = p.colRect;
     this.spd = p.spd;
     this.max_si = this.si = p.si;
     this.points = p.points;
+    this.v = new Vector();
+    this.v.setPolar( this.bodyAngle, p.spd );
     this.showSICount = 0;
 
     if( !Plane.planes.Bomber1.image )
@@ -102,6 +98,7 @@ export class Plane
       {
         o.image = new Image();
         o.image.src = o.src;
+        e.registerEnemyType( k );
       }
   }
 
@@ -149,23 +146,31 @@ export class Plane
         this.bodyAngle = setRelTheta( this.bodyAngle, ( actRel < tgtRel ) ? actRel + .02 : actRel - .02 );
     }
 
-    let delta = this.spd * deltaMs / 1000;
-    this.p.x += delta * Math.cos( this.bodyAngle );
-    this.p.y += delta * Math.sin( this.bodyAngle );
-
     // plane specific update
+    var value = true;
     switch( this.oType )
     {
       case "Bomber1":
       case "Bomber2":
-        return this.bomberUpdate( deltaMs );
+        value = this.bomberUpdate( deltaMs );
+        break;
       case "Fighter1":
       case "Fighter2":
-        return this.fighterUpdate( deltaMs );
+        value = this.fighterUpdate( deltaMs );
+        break;
     }
+
+    // translate
+    this.v.setPolar( this.bodyAngle, this.spd );
+    this.p.x += this.v.xc * deltaMs / 1000;
+    this.p.y += this.v.yc * deltaMs / 1000;
+
+    return value;
   }
 
+  /////////////////////////////////////////////////
   // specific updates for different types of planes.
+  /////////////////////////////////////////////////
   bomberUpdate( deltaMs )
   {
     if( this.p.x < c.MIN_WORLD_X - 50 ) // To the left of the theater, turn around.
@@ -174,17 +179,12 @@ export class Plane
       this.tgtBodyAngle = 0; // go right
       this.bodyAngle = this.tgtBodyAngle;
     }
-    else if( this.p.x > c.MAX_WORLD_X + 100 )
+    else if( this.p.x > c.MAX_WORLD_X + 50 )
     {
-      if( this.e.cityDestroyed )
-      {
-        this.e.addStatusMessage( "Bomber Left Theater" );
-        this.e.qMessage( { m: c.MSG_ENEMY_LEFT_BATTLEFIELD, p : this } );
-        return false;
-      }
       this.target_y = randInt( 10, 30 );
       this.tgtBodyAngle = c.PI; // go left
       this.bodyAngle = this.tgtBodyAngle;
+      this.bombs = 1;
     }
     else
     {
@@ -198,34 +198,35 @@ export class Plane
         {
           this.tgtBodyAngle = setRelTheta( this.tgtBodyAngle,
                                            this.p.y < this.target_y ? this.maxBodyAngle : -this.maxBodyAngle );
-          this.nextAngleAdjustMs = 200; // check often until at target y
+          this.nextAngleAdjustMs = 500; // check often until at target y
         }
         else
           this.tgtBodyAngle = setRelTheta( this.tgtBodyAngle, 0 ); // level off
         
-        this.bombs = 0;
-
         if( this.bombs )  // See if there's a target
         {
-          let o, index;
+          let index;
           for( index = 0;index < this.e.objects.length;index++ )
-          {
-            o = this.e.objects[ index ];
-            if( o.oType == "CityBuilding" )
-              if( Math.abs( o.p.x - this.p.x ) < 10 )
+            if( this.e.objects[ index ].oType == "CityBuilding" )
+              if( Math.abs( this.e.objects[ index ].p.x - this.p.x ) < 10 )
               {
-                this.e.addObject( new Missile( this.e, "Bomb", new Point( this.p.x, this.p.y, 1 ),
-                                               this.bodyAngle, this.v, this ) );
+                this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                                   p: new Missile( this.e, "Bomb", new Point( this.p.x, this.p.y, 1 ),
+                                                   this.bodyAngle, this.v, this ) } );
+
                 this.bombs -= 1;
+                this.nextAngleAdjustMs = 2500;
                 break;
               }
-          }
         }
       }
     }
-    return(true );
+
+    return( true );
   }
 
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
   fighterUpdate( deltaMs )
   {
     if( Math.abs( this.p.x - this.e.chopper.p.x ) > this.turnDelta ) // Need to turn around.
@@ -250,18 +251,21 @@ export class Plane
         this.tgtBodyAngle = setRelTheta( this.bodyAngle, .05 );
     }
 
-    return( true );
-
     if( this.nextMissile > 0 )
-      this.nextMissile -= 1;
-    else if( this.p.y >= this.target_y ) // time to shoot a missile. 
-      if( ( this.v.dx() > 0 && e.chopper.p.x > this.p.x ) ||
-          ( this.v.dx() < 0 && e.chopper.p.x < this.p.x ) ) // only shoot if we're going towards the chopper
+      this.nextMissile -= deltaMs;
+    else  // time to shoot a missile when we can
+    {
+      // only shoot if we're going towards the chopper
+      let planeDir = dirFromAngle( this.bodyAngle );
+      if( ( ( planeDir == c.DIR_RIGHT ) && this.e.chopper.p.x > this.p.x ) ||
+          ( ( planeDir == c.DIR_LEFT ) && this.e.chopper.p.x < this.p.x ) ) 
       {
-        this.e.addObject( new Missile( this.e, "MissileA", new Point( this.p.x, this.p.y, 1 ),
-                                       this.bodyAngle, this.v, this ) );
-        this.nextMissile = 50 + randInt( 0, 100 );
+        this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                           p: new Missile( this.e, "MissileA", new Point( this.p.x, this.p.y, 1 ),
+                                           this.bodyAngle, this.v, this ) } );
+        this.nextMissile = 5000 + randInt( 0, 4000 );
       }
+    }
 
     return true;
   }

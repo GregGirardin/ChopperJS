@@ -26,13 +26,15 @@ class gameEngine
     this.debugCoords = true; // Show x,y and collision box
     this.chopper = undefined;
     this.highScore = 0;
-    this.msgQ = []; // Q of messages to loosely couple messaging
+    this.msgQ = []; // Q of messages send to Engine to loosely couple messaging
+    this.statusMsgQ = []; // Status message Q.
     this.newGameTimer = 0;
     this.currentCamOff = 0; // -20; // Start from the left initially to show the City
     this.showDirections = false;
     this.cityDestroyed = false;
     this.currentMessage = undefined;
     this.currentMessageTime = 0;
+    this.enemyTypes = [];
 
     this.newGame();
     // tbd hack delay so sprites have time to load. Fix this.
@@ -54,93 +56,21 @@ class gameEngine
     this.newLevel();
   }
 
-  // don't call processMessage directly, call this 
-  qMessage( m )
-  {
-    this.msgQ.push( m );
-  }
-
-  processMessage( m, param )
-  {
-    var index;
-
-    switch( m )
-    {
-      case c.MSG_UI: // currently all UI messages are for the chopper.
-        this.chopper.processMessage( this, c.MSG_UI, param );
-        break;
-
-      case c.MSG_BUILDING_DESTROYED:
-        var anyBuildings = false;
-        for( index = 0;index < this.objects.length;index++ )
-          if( this.objects[ index ].oType == "CityBuilding" )
-          {
-            anyBuildings = true;
-            break;
-          }
-        if( !anyBuildings )
-        {
-          this.enemyBaseDestroyed = true;
-          this.addStatusMessage( { m : "City Destroyed", t : 2000 } );
-          this.gameOver();
-        }
-        else
-          this.addStatusMessage( { m : "City Bombed", t : 1000 } );
-
-        break;
-
-      case c.MSG_E_BUILDING_DESTROYED:
-        var anyBuildings = false;
-        for( index = 0;index < this.objects.length;index++ )
-          if( this.objects[ index ].oType == "EnemyBuilding" )
-          {
-            anyBuildings = true;
-            break;
-          }
-        if( !anyBuildings )
-        {
-          this.enemyBaseDestroyed = true;
-          this.addStatusMessage( { m : "Enemy Base Destroyed", t : 1000 } );
-        }
-
-      case c.MSG_ENEMY_LEFT_BATTLEFIELD:
-        this.modScore( param.points );
-        break;
-
-      case c.MSG_CHOPPER_DESTROYED:
-
-      break;
-      case c.MSG_SPAWNING_COMPLETE: break;
-      case c.MSG_SOLDIERS_TO_CITY: break;
-      case c.MSG_MISSION_COMPLETE: break;
-      case c.MSG_CHOPPER_AT_BASE:
-        if( this.allEnemiesDestroyed )
-          this.processMessage( MSG_MISSION_COMPLETE, undefined );
-      break;
-    }
-  }
-
-  modScore( points ) 
-  {
-    this.score += points;
-    if( this.score < 0 )
-      this.score = 0;
-    if( this.score > this.highScore )
-      this.highScore = this.score;
-  }
-
   newLevel()
   {
     var z;
 
     this.cameraOnHelo = false;
-    this.enemyBaseDestroyed = false;
+    //this.enemyBaseDestroyed = false;
     this.spawningComplete = false;
     this.allEnemiesDestroyed = false;
     this.fadeInCount = 0;
+    this.missionInProgress = true;
 
     this.levelComplete = false;
     this.objects = []; // world objects
+
+    // Create all initial objects for the level. GameManager spawns things during play.
 
     // Sky and ground
     this.addObject( new SkyGround( this ) );
@@ -178,35 +108,138 @@ class gameEngine
     buildEBase( this, c.MAX_WORLD_X / 2, c.NUM_E_BASE_BUILDINGS + this.level * 2 );
 
     this.addObject( new GameManager( this, this.level ) );
-    // this.addObject( new Plane( this, "Fighter1", 100, 30 ) );
-    // this.addObject( new Plane( this, "Fighter2", 10, 30 ) );
-    // this.addObject( new Plane( this, "Bomber1", 20, 30 ) );
-    // this.addObject( new Vehicle( this, "Jeep", 20, c.DIR_LEFT ) );
-    // this.addObject( new Vehicle( this, "Transport1", c.MIN_WORLD_X ) );
-    // this.addObject( new Vehicle( this, "Transport2", c.MIN_WORLD_X ) );
-    // this.addObject( new Vehicle( this, "Truck", c.MIN_WORLD_X ) );
-    // this.addObject( new Tank( this, -10 ) );
   }
 
-  // tbd. put new objects in temp list and add all later.
-  // so we don't add while processing the list in this.update()
+  processMessage( m, param )
+  {
+    var index;
+
+    switch( m )
+    {
+      case c.MSG_UI: // currently all UI messages are for the chopper.
+        this.chopper.processMessage( this, c.MSG_UI, param );
+        break;
+
+      case c.MSG_BUILDING_DESTROYED:
+        var anyBuildings = false;
+        for( index = 0;index < this.objects.length;index++ )
+          if( this.objects[ index ].oType == "CityBuilding" )
+          {
+            anyBuildings = true;
+            break;
+          }
+        if( !anyBuildings )
+        {
+          this.addStatusMessage( { m : "City Destroyed!", t : 2000 } );
+          this.gameOver();
+        }
+        else
+          this.addStatusMessage( { m : "City Bombed", t : 1000 } );
+
+        break;
+
+      case c.MSG_E_BUILDING_DESTROYED:
+        var anyBuildings = false;
+        for( index = 0;index < this.objects.length;index++ )
+          if( this.objects[ index ].oType == "EnemyBuilding" )
+          {
+            anyBuildings = true;
+            break;
+          }
+        if( !anyBuildings )
+        {
+          // this.enemyBaseDestroyed = true;
+          this.addStatusMessage( { m : "Enemy Base Destroyed!", t : 1000 } );
+        }
+
+      case c.MSG_ENEMY_LEFT_BATTLEFIELD:
+        this.modScore( param.points );
+        var anyEnemies = false;
+        for( index = 0;index < this.objects.length;index++ )
+          if( this.enemyTypes.includes( this.objects[ index ].oType ) )
+          {
+            anyEnemies = true;
+            break;
+          }
+        if( !anyEnemies && this.spawningComplete )
+        {
+          this.allEnemiesDestroyed = true;
+          this.addStatusMessage( { m : "All Enemies Destroyed, return to Base", t : 1000 } );
+        }
+        break;
+
+      case c.MSG_CHOPPER_DESTROYED:
+        break;
+
+      case c.MSG_SOLDIERS_TO_CITY: break;
+
+      case c.MSG_MISSION_COMPLETE:
+        this.addStatusMessage( { m: "Level Complete.", t : 1000 } );
+        var cityBonus = 0;
+        for( index = 0;index < this.objects.length;index++ )
+          if( this.objects[ index ].oType == "CityBuilding" )
+            cityBonus += c.POINTS_BUILDING;
+        if( cityBonus )
+          this.addStatusMessage( { m : "City bonus " + cityBonus, t : 1000 } )
+          this.modScore( cityBonus )
+
+        this.level += 1;
+        if( this.level > c.NUM_LEVELS )
+        {
+          this.addStatusMessage( { m :"All levels complete!", t : 1000 } );
+          this.gameOver();
+        }
+        else
+          this.newLevel();
+
+        break;
+
+      case c.MSG_CHOPPER_AT_BASE:
+        if( this.allEnemiesDestroyed && this.missionInProgress )
+        {
+          this.missionInProgress = false;
+          this.qMessage( { m : c.MSG_MISSION_COMPLETE, p : undefined } );
+        }
+        break;
+
+      case c.MSG_CREATE_OBJECT:
+        this.objects.push( param );
+        this.objects.sort( function( a, b ){ return b.p.z - a.p.z } );
+        break;
+    }
+  }
+
+  modScore( points ) 
+  {
+    this.score += points;
+    if( this.score < 0 )
+      this.score = 0;
+    if( this.score > this.highScore )
+      this.highScore = this.score;
+  }
+
+  // Deprecate. don't use after newLevel() so we don't risk conflicts modifying objects[].
   addObject( newobj )
   {
     this.objects.push( newobj );
     this.objects.sort( function( a, b ){ return b.p.z - a.p.z } );
   }
 
-  addStatusMessage( msg )
-  {
-    this.msgQ.push( msg );
-  }
+ // Don't call processMessage directly to avoid circular callbacks / loosely couple.
+  qMessage( m ) { this.msgQ.push( m ); }
+  // Enemy types need to register with us so we know when they are all destroyed.
+  registerEnemyType( type ) { this.enemyTypes.push( type ); }
+  addStatusMessage( msg ) { this.statusMsgQ.push( msg ); }
 
-  gameOver( )
+  gameOver()
   {
     this.addStatusMessage( { m : "Game Over Man", t : 2000 } );
     this.newGameTimer = 4000;
   }
 
+  //////////////////////////////////////
+  //////////////////////////////////////
+  //////////////////////////////////////
   update( deltaMs )
   {
     var index1, index2;
@@ -221,6 +254,13 @@ class gameEngine
         this.newGame();
         return
       }
+    }
+
+    // The msg Q.
+    while( this.msgQ.length )
+    {
+      var msg = this.msgQ.shift();
+      this.processMessage( msg.m, msg.p );
     }
 
     // Collision detection. Applies to objects with a colRect[].
@@ -246,7 +286,7 @@ class gameEngine
           index1--;
         }
   
-    // move the camera
+    // Move the camera
     var tgtCamXOff;
     switch( this.chopper.chopperDir )
     {
@@ -275,23 +315,18 @@ class gameEngine
     if( this.currentMessageTime > 0 )
       this.currentMessageTime -= deltaMs;
     else if( this.currentMessageTime <= 0 )
-      if( this.msgQ.length )
+      if( this.statusMsgQ.length )
       {
-        var msg = this.msgQ.shift();
+        var msg = this.statusMsgQ.shift();
         this.currentMessageTime = msg.t;
         this.currentMessage = msg.m;
       }
       else
         this.currentMessage = undefined;
-    
-     // the msg Q
-      while( this.msgQ.length )
-      {
-        var msg = this.msgQ.shift();
-        this.processMessage( msg.m, msg.p );
-      }
   }
-
+  //////////////////////////////////////
+  //////////////////////////////////////
+  //////////////////////////////////////
   draw()
   {
     var index, o, p;
@@ -319,33 +354,31 @@ class gameEngine
 
     // scores
     this.ctx.font = "20px Arial";
-    this.ctx.fillText( "Score:" + this.score, c.SCREEN_WIDTH / 2 - 10, 20 );
+    this.ctx.fillText( "Score:" + this.score, c.SCREEN_WIDTH / 2 - 30, 20 );
+    this.ctx.font = "12px Arial";
+    this.ctx.fillText( "High:" + this.highScore, c.SCREEN_WIDTH / 2 - 15, 30 );
     if( this.showDirections )
       this.displayDirections();
     if( this.currentMessage )
     {
       this.ctx.font = "40px Arial";
       this.ctx.fillText( this.currentMessage,
-                         c.SCREEN_WIDTH / 2 - this.currentMessage.length * 8,
-                         c.SCREEN_HEIGHT / 2 );
+                         c.SCREEN_WIDTH / 2 - this.currentMessage.length * 8, c.SCREEN_HEIGHT / 2 );
     }
   }
 
   displayDirections()
   {
-    const d = [ "Chopper",
-                "",
+    const d = [ "Chopper", "",
                 "up/down/left/right - move chopper",
                 "a : Small Missile",
                 "s : Large Missile",
                 "z : Bomb",
                 "sp : Bullet",
-                "? : This screen",
-                "",
+                "? : This screen", "",
                 "Finish level by destroying all enemies and returning to base.",
                 "Refuel by landing at base",
-                "Game ends if you lose all choppers, finish all levels, or the city is destroyed",
-                ];
+                "Game ends if you lose all choppers, finish all levels, or the city is destroyed" ];
 
     this.ctx.font = "20px Arial";
     this.ctx.fillStyle = "##000000";
@@ -373,9 +406,10 @@ class GameManager
     this.e = e;
     this.gameTime = 0;
     this.gameLevel = level;
-    this.numEnemies = level * 10;
-    this.timeToNextSpawn = 5000;
+    this.numEnemies = 1; // level * 2;
+    this.timeToNextSpawn = 100;
     this.p = new Point( 0, 0, 0 );
+    this.newEnemy = 7;
   }
 
   update( deltaMs )
@@ -396,27 +430,34 @@ class GameManager
     this.timeToNextSpawn -= deltaMs;
     if( ( this.timeToNextSpawn < 0 ) && ( this.numEnemies > 0 ) )
     {
-      this.numEnemies -= 0;
-      this.timeToNextSpawn = 20000;
-      let spX = this.e.chopper.p.x + 100;
+      this.numEnemies -= 1;
+      if( !this.numEnemies )
+        this.e.spawningComplete = true;
+      this.timeToNextSpawn = 100;
+      let spX = this.e.chopper.p.x + randInt( 20, 100 );
       let spY = randInt( 10, 30 );
  
       // Possible enemies.
-      // "Jeep", "Transport1", "Transport2", "Truck", "Tank", 
-      // "Bomber1", "Bomber2", "Fighter1", "Fighter2"
-      const newEnemy = randInt( 0, 9);
-      switch( newEnemy )
+      // "Jeep", "Transport1", "Transport2", "Truck", "Tank", // "Bomber1", "Bomber2", "Fighter1", "Fighter2"
+      // const newEnemy = randInt( 0, 9);
+      switch( this.newEnemy )
       {
-        case 0: this.e.addObject( new Vehicle( this.e, "Jeep",        spX, c.DIR_LEFT ) ); break;
-        case 1: this.e.addObject( new Vehicle( this.e, "Transport1",  spX ) );break;
-        case 2: this.e.addObject( new Vehicle( this.e, "Transport2",  spX ) );break; 
-        case 3: this.e.addObject( new Vehicle( this.e, "Truck",       spX ) );break; 
-        case 4: this.e.addObject( new Tank(    this.e,                spX ) );break;
-        case 5: this.e.addObject( new Plane(   this.e, "Bomber1",     spX, spY ) );break;
-        case 6: this.e.addObject( new Plane(   this.e, "Bomber2",     spX, spY ) );break;
-        case 7: this.e.addObject( new Plane(   this.e, "Fighter1",    spX, spY ) );break;
-        case 8: this.e.addObject( new Plane(   this.e, "Fighter2",    spX, spY ) );break;
+        case 0: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Vehicle( this.e, "Jeep",        spX ) } ); break;
+        case 1: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Vehicle( this.e, "Transport1",  spX ) } ); break;
+        case 2: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Vehicle( this.e, "Transport2",  spX ) } ); break;
+        case 3: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Vehicle( this.e, "Truck",       spX ) } ); break;
+        case 4: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Tank(    this.e,                spX ) } ); break;
+        case 5: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Plane(   this.e, "Bomber1",     spX, spY ) } ); break;
+        case 6: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Plane(   this.e, "Bomber2",     spX, spY ) } ); break;
+        case 7: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Plane(   this.e, "Fighter1",    spX, spY ) } ); break;
+        case 8: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Plane(   this.e, "Fighter2",    spX, spY ) } ); break;
+        default:
+          break;
       }
+
+      this.newEnemy++;
+      // if( this.newEnemy > 8 )
+      //   this.newEnemy = 0;
     }
 
     return true;

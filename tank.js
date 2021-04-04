@@ -41,6 +41,7 @@ export class Tank
 
       Tank.image.src = "./images/vehicles/Tank.gif";
       Tank.cannon.src = "./images/vehicles/Cannon.gif";
+      e.registerEnemyType( this.oType );
     }
   }
 

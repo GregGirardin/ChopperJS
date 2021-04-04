@@ -7,7 +7,7 @@ export const c =
   MAX_ALTITUDE : 100,
 
   // Max velocities.
-  MAX_C_X_VEL : 20, 
+  MAX_C_X_VEL : 20, // chopper
   MAX_C_Y_VEL : 10,
   MIN_C_Y_VEL : -5,
 
@@ -17,10 +17,10 @@ export const c =
   MAX_TRUCK_VEL   :  8,
   MAX_TANK_VEL    :  4,
 
-  MAX_BOMBER1_VEL  : 15,
-  MAX_BOMBER2_VEL  : 20,
-  MAX_FIGHTER1_VEL : 25,
-  MAX_FIGHTER2_VEL : 30,
+  MAX_BOMBER1_VEL  : 19,
+  MAX_BOMBER2_VEL  : 15,
+  MAX_FIGHTER1_VEL : 22,
+  MAX_FIGHTER2_VEL : 25,
 
   MAX_BULLET_VEL    : 70,
   MAX_MISSILE_A_VEL : 60,
@@ -28,9 +28,9 @@ export const c =
 
   GRAVITY_TERM_VEL  : 30, // how fast things that are falling reach
 
-  SCREEN_WIDTH : 1600,
+  SCREEN_WIDTH  : 1600,
   SCREEN_HEIGHT : 800,
-  SCREEN_PAD : 500, // Smaller saves wasted drawing. Make sure nothing disappears.
+  SCREEN_PAD    : 500, // Smaller saves wasted drawing. Make sure nothing disappears.
 
   PI : 3.14159,
   EFFECTIVE_ZERO : .001,
@@ -42,7 +42,7 @@ export const c =
   NUM_CHOPPERS          : 3,
   NUM_CITY_BUILDINGS    : 5,
   NUM_E_BASE_BUILDINGS  : 5,
-  NUM_LEVELS            : 5,
+  NUM_LEVELS            : 2,
 
   // World geometry
   HORIZON_DISTANCE : 10000,
@@ -88,16 +88,15 @@ export const c =
   SI_TANK       : 150.0,
 
   // points
-  POINTS_JEEP       : 1,
-  POINTS_TRUCK      : 2,
-  POINTS_TRANSPORT  : 2,
-  POINTS_TANK       : 5,
-  POINTS_BOMBER     : 5,
-  POINTS_FIGHTER1   : 10,
-  POINTS_FIGHTER2   : 10,
-  POINTS_E_BUILDING : 1, // enemy base building.
-  POINTS_E_BASE     : 10,
-  POINTS_BUILDING   : 1, // city buildings not bombed after level complete
+  POINTS_JEEP       : 5,
+  POINTS_TRUCK      : 10,
+  POINTS_TRANSPORT  : 15,
+  POINTS_TANK       : 50,
+  POINTS_BOMBER     : 20,
+  POINTS_FIGHTER1   : 30,
+  POINTS_FIGHTER2   : 30,
+  POINTS_E_BUILDING : 10, // enemy base building.
+  POINTS_BUILDING   : 20, // our building that survives the level.
 
   // Full weapon payload.
   MAX_MISSILE_A     : 20.0,
@@ -113,10 +112,10 @@ export const c =
   MSG_BUILDING_DESTROYED      : 10, // One of our buildings destroyed
   MSG_E_BUILDING_DESTROYED    : 11, // enemy base building destroyed
   MSG_CHOPPER_DESTROYED       : 13,
-  MSG_SPAWNING_COMPLETE       : 14, // all enemies for this level have spawned
   MSG_ENEMY_LEFT_BATTLEFIELD  : 15, // destroyed or left due to mission complete
   MSG_MISSION_COMPLETE        : 16,
   MSG_CHOPPER_AT_BASE         : 20,
   MSG_SOLDIERS_TO_CITY        : 21,
   MSG_RESOURCES_AVAIL         : 22, // param A list of Resources
+  MSG_CREATE_OBJECT           : 23,
 };

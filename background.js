@@ -397,7 +397,8 @@ class CityBuilding
           this.showSICount = c.SHOW_SI_COUNT;
           this.si -= param.damage;
           if( this.si < 0 )
-            e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
+            this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                               p: new Explosion( this.e, this.p, "Explosion1" ) } );
         }
     }
   }
@@ -523,7 +524,8 @@ class EBuilding // from miscBuildings.gif
           this.showSICount = c.SHOW_SI_COUNT;
           this.si -= param.damage;
           if( this.si < 0 )
-            e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
+            this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                               p: new Explosion( this.e, this.p, "Explosion1" ) } );
         }
     }
   }
@@ -532,7 +534,7 @@ class EBuilding // from miscBuildings.gif
   {
     if( this.si < 0.0 )
     {
-      this.e.processMessage( c.MSG_E_BUILDING_DESTROYED, this );
+      this.e.qMessage( { m: c.MSG_E_BUILDING_DESTROYED, p : this } );
       return false;
     }
 

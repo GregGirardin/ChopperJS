@@ -86,9 +86,13 @@ export class Missile
     {
       case c.MSG_COLLISION_DET:
         // param is the object that collided with it.
-        if( param.oType != this.owner.oType ) // we hit our parent, ignore this collision
+        if( ( param.oType != this.owner.oType ) && ( param.oType != "Base" ) ) // we hit our parent, ignore this collision
         {
-          e.addObject( new Explosion( this.e, this.p, "SmokeA" ) );
+          if( this.oType == "Bullet" )
+            this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Explosion( this.e, this.p, "SmokeA" ) } );
+          else
+            this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Explosion( this.e, this.p, "Explosion1" ) } );
+
           this.active = false;
         }
         break;
@@ -121,7 +125,8 @@ export class Missile
   {
     if( this.p.y < 0 )
     {
-      this.e.addObject( new Explosion( this.e, this.p, "Bomb" ) );
+      this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                         p: new Explosion( this.e, this.p, "Bomb" ) } );
       return false;
     }
 
@@ -145,7 +150,9 @@ export class Missile
     
     if( this.p.y < 0 )
     {
-      this.e.addObject( new Explosion( this.e, this.p, "SmokeA" ) );
+      this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                         p: new Explosion( this.e, this.p, "SmokeA" ) } );
+
       return false;
     }
 
@@ -156,7 +163,8 @@ export class Missile
   {
     if( this.p.y < 0 )
     {
-      this.e.addObject( new Explosion( this.e, this.p, "Bomb" ) ); // ground explosion
+      this.e.qMessage( { m: c.MSG_CREATE_OBJECT,// ground explosion
+                         p: new Explosion( this.e, this.p, "Bomb" ) } );
       return false;
     }
 

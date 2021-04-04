@@ -1,7 +1,7 @@
 import { c } from './constants.js';
 import { Point, projection, setRelTheta, getRelTheta, Vector, dirFromAngle, showSI } from './utils.js';
 import { Missile } from './missiles.js';
-import { Explosion } from './explosions.js';
+//import { Explosion } from './explosions.js';
 
 export class Helicopter
 {
@@ -21,8 +21,8 @@ export class Helicopter
 
     this.e = e;
     this.oType = "Chopper";
-    this.colRect = [ -1, 2, 1, 0 ];
     this.p = new Point( x, y, z );
+    this.colRect = [ -1, 2, 1, 0 ];
     this.rotVertex = new Point();
     this.rotorTheta = 0.0;
     this.v = new Vector();
@@ -125,7 +125,6 @@ export class Helicopter
             break;
 
           ////////////////// ////////////////// //////////////////
-          ////////////////// ////////////////// //////////////////
 
           case " ":
             if( ( this.bulletRdyCounter <= 0 ) && ( this.curAmount.bullets > 0 ) )
@@ -173,9 +172,7 @@ export class Helicopter
         if( Missile.types.includes( param.oType ) )
         {
           if( param.owner.oType != this.oType ) // one of our own?
-          {
-            this.curAmount[ "SI" ] -= param.wDamage;
-          }
+            this.curAmount.SI -= param.wDamage;
         }
         else if( param.oType == "Base" )
         {
@@ -189,6 +186,7 @@ export class Helicopter
             param.curAmount[ k ] -= takeAmt;
             this.curAmount[ k ] += takeAmt;
           }
+          this.e.qMessage( { m: c.MSG_CHOPPER_AT_BASE, p: undefined } );
         }
         break;
     }
@@ -212,12 +210,13 @@ export class Helicopter
         case c.DIR_FWD:   bodyAngle = -c.PI / 2;  break;
       }
       if( this.chopperDir != c.DIR_FWD || this.weapon == "Bomb" )
-        this.e.addObject( new Missile( this.e,
-                                       this.weapon,
-                                       new Point( this.p.x, this.p.y, 1 ),
-                                       bodyAngle,
-                                       this.v,
-                                       this ) );
+        this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                           p: new Missile( this.e,
+                                           this.weapon,
+                                           new Point( this.p.x, this.p.y, 1 ),
+                                           bodyAngle,
+                                           this.v,
+                                           this ) } );
       this.weapon = undefined;
     }
 
@@ -240,8 +239,8 @@ export class Helicopter
       this.v.yc = this.tgtYv;
 
     // translate
-    this.p.y += this.v.yc * deltaMs / 1000;
     this.p.x += this.v.xc * deltaMs / 1000;
+    this.p.y += this.v.yc * deltaMs / 1000;
 
     if( this.p.y < 0 )
     {

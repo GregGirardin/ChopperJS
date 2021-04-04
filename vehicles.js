@@ -63,16 +63,16 @@ export class Vehicle
   {
     this.e = e;
     this.oType = type;
+    this.p = new Point( x, 0, 2 );
     let v = Vehicle.vehicles[ type ];
+    this.colRect = v.colRect;
     this.imgFactor = v.imgFactor;
     this.max_si = this.si = v.si;
     this.spd = v.spd;
     this.wheelX = v.wheelX;
     this.wheelY = v.wheelY;
     this.wheelR = v.wheelR;
-    this.colRect = v.colRect;
     this.points = v.points;
-    this.p = new Point( x, 0, 2 );
     this.showSICount = 0;
     this.bodyAngle = ( dir == c.DIR_LEFT ) ? c.PI : 0;
 
@@ -81,6 +81,7 @@ export class Vehicle
       {
         o.image = new Image();
         o.image.src = o.src;
+        e.registerEnemyType( k );
       }
   }
 
