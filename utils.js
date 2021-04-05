@@ -137,7 +137,7 @@ export class Vector
       else
         ang = c.PI + Math.atan( this.yc / this.xc );
     }
-    return { ang, mag };
+    return { a : ang, m : mag };
   }
 }
 

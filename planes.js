@@ -14,7 +14,6 @@ export class Plane
               src : "images/vehicles/Bomber1.png",
               si : c.SI_BOMBER1,
               bombs : 2,
-              damage : 0,
               imgFactor : .8,
               points : c.POINTS_BOMBER,
               spd : c.MAX_BOMBER1_VEL,
@@ -29,7 +28,6 @@ export class Plane
               src : "images/vehicles/Bomber2.gif",
               si : c.SI_BOMBER2,
               bombs : 3,
-              damage : 0,
               imgFactor : .7,
               points : c.POINTS_BOMBER,
               spd : c.MAX_BOMBER2_VEL,
@@ -44,12 +42,11 @@ export class Plane
               src : "images/vehicles/Fighter.gif",
               si : c.SI_FIGHTER1,
               bombs : 0,
-              damage : 0,
               imgFactor : .4,
               points : c.POINTS_FIGHTER1,
               spd : c.MAX_FIGHTER1_VEL,
               adjTimeMs : 1500, 
-              turnDelta : 250,
+              turnDelta : 175,
               maxBodyAngle : .2,
               colRect : [ -3, 1, 3, -1 ],
               },
@@ -59,7 +56,6 @@ export class Plane
               src : "images/vehicles/Jet4.png",
               si : c.SI_FIGHTER2,
               bombs : 0,
-              damage : 0,
               imgFactor : .3,
               points : c.POINTS_FIGHTER2,
               spd : c.MAX_FIGHTER2_VEL,
@@ -109,7 +105,7 @@ export class Plane
       case c.MSG_COLLISION_DET:
         if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
         {
-          this.showSICount = c.SHOW_SI_COUNT;
+          this.showSICount = c.SHOW_SI_TIME;
           this.si -= param.damage;
           if( this.si < 0 )
             e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );
@@ -237,15 +233,12 @@ export class Plane
       if( this.nextAngleAdjustMs < 0 )
       {
         this.nextAngleAdjustMs = this.adjTimeMs;
-        if( this.p.y > this.e.chopper.p.y )
-          this.tgtBodyAngle = setRelTheta( this.bodyAngle, -this.maxBodyAngle );
-        else if( this.p.y < this.e.chopper.p.y )
-          this.tgtBodyAngle = setRelTheta( this.bodyAngle, this.maxBodyAngle );
-        else
-        {
+        if( Math.abs( this.p.y - this.e.chopper.p.y ) < 5 )
           this.tgtBodyAngle = setRelTheta( this.bodyAngle, 0 );
-          this.nextAngleAdjustMs = 3000;
-        }
+        else if( this.p.y > this.e.chopper.p.y ) // we're higher, descend.
+          this.tgtBodyAngle = setRelTheta( this.bodyAngle, -this.maxBodyAngle );
+        else // we're lower, ascend.
+          this.tgtBodyAngle = setRelTheta( this.bodyAngle, this.maxBodyAngle );
       }
       if( this.p.y < 10 )
         this.tgtBodyAngle = setRelTheta( this.bodyAngle, .05 );
@@ -255,15 +248,17 @@ export class Plane
       this.nextMissile -= deltaMs;
     else  // time to shoot a missile when we can
     {
-      // only shoot if we're going towards the chopper
+      // only shoot if we're going towards the chopper and are reasonably close
+
       let planeDir = dirFromAngle( this.bodyAngle );
-      if( ( ( planeDir == c.DIR_RIGHT ) && this.e.chopper.p.x > this.p.x ) ||
-          ( ( planeDir == c.DIR_LEFT ) && this.e.chopper.p.x < this.p.x ) ) 
+      if( ( ( ( planeDir == c.DIR_RIGHT ) && this.e.chopper.p.x > this.p.x ) ||
+            ( ( planeDir == c.DIR_LEFT ) && this.e.chopper.p.x < this.p.x ) ) &&
+          ( Math.abs( this.e.chopper.p.x - this.p.x ) < 50 ) )
       {
         this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
                            p: new Missile( this.e, "MissileA", new Point( this.p.x, this.p.y, 1 ),
                                            this.bodyAngle, this.v, this ) } );
-        this.nextMissile = 5000 + randInt( 0, 4000 );
+        this.nextMissile = randInt( 500, 3000 );
       }
     }
 
@@ -272,8 +267,6 @@ export class Plane
 
   draw( p )
   {
-    // tbd, this should be done once to save time.
-
     if( !this.w || this.w == 0 )
     {
       this.i = Plane.planes[ this.oType ].image;
@@ -290,7 +283,6 @@ export class Plane
       theta = -theta;
 
     this.e.ctx.rotate( theta );
-
     this.e.ctx.drawImage( this.i, -this.w / 2, -this.h / 2, this.w, this.h );
     this.e.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
 

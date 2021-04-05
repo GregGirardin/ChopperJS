@@ -29,7 +29,6 @@ export class Tank
     this.showSICount = 0;
     this.state = S.TANK_STATE_GUARD; // use a bit of a state machine for tank AI
     this.smTimer = 2000; // run the state machine once in a while
-    this.wDamage = 0; // it damages by shooting..
     this.bodyAngle = c.PI;
     this.spd = c.MAX_TANK_VEL;
     this.f = .9; // image scale factor
@@ -52,7 +51,7 @@ export class Tank
       case c.MSG_COLLISION_DET:
         if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
         {
-          this.showSICount = c.SHOW_SI_COUNT;
+          this.showSICount = c.SHOW_SI_TIME;
           this.si -= param.damage;
           if( this.si < 0 )
             e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );

@@ -11,7 +11,6 @@ export class Vehicle
               image : undefined,
               src : "images/vehicles/Jeep.png",
               si : c.SI_JEEP,
-              damage : 0,
               imgFactor : .5,
               points : c.POINTS_JEEP,
               spd : c.MAX_JEEP_VEL,
@@ -25,7 +24,6 @@ export class Vehicle
               image : undefined,
               src : "images/vehicles/Transport1.gif",
               si : c.SI_TRANSPORT1,
-              damage : 0,
               imgFactor : .5,
               points : c.POINTS_TRANSPORT,
               spd : c.MAX_TRANS1_VEL,
@@ -37,7 +35,6 @@ export class Vehicle
               image : undefined,
               src : "images/vehicles/Transport2.gif",
               si : c.SI_TRANSPORT2,
-              damage : 0,
               imgFactor : .4,
               points : c.POINTS_TRANSPORT,
               spd : c.MAX_TRANS2_VEL,
@@ -49,7 +46,6 @@ export class Vehicle
               image : undefined,
               src : "images/vehicles/Truck1.gif",
               si : c.SI_TRUCK,
-              damage : 0,
               imgFactor : .4,
               points : c.POINTS_TRUCK,
               spd : c.MAX_TRUCK_VEL,
@@ -93,7 +89,7 @@ export class Vehicle
 
         if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
         {
-          this.showSICount = c.SHOW_SI_COUNT;
+          this.showSICount = c.SHOW_SI_TIME;
           this.si -= param.damage;
           if( this.si <= 0 )
             e.addObject( new Explosion( this.e, this.p, "Explosion1" ) );

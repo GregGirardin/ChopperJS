@@ -39,6 +39,8 @@ export class SkyGround
   }
 }
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 export class Mtn
 {
   static i;
@@ -64,6 +66,8 @@ export class Mtn
   }
 }
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 export class Hill
 {
   static i;
@@ -89,6 +93,8 @@ export class Hill
   }
 }
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 export class Cloud
 {
   static img;
@@ -166,6 +172,8 @@ export class Cloud
   }
 }
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 export class Rock
 {
   static img;
@@ -195,6 +203,8 @@ export class Rock
   }
 }
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 export class Grass
 {
   static img;
@@ -225,6 +235,8 @@ export class Grass
   }
 }
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 export class Tree
 {
   static img;
@@ -263,6 +275,8 @@ export class Tree
   }
 }
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 export class Base
 {
   static img;
@@ -281,7 +295,7 @@ export class Base
     // Base has resources that the Chopper can take when it lands.
     let r = Helicopter.resourceMaxAmount;
     this.curAmount = { fuel     : r.fuel,
-                       SI       : r.SI,
+                       StructI  : r.StructI,
                        bullets  : r.bullets,
                        missileA : r.missileA,
                        missileB : r.missileB,
@@ -333,6 +347,8 @@ export class Base
   }
 }
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 class CityBuilding
 {
   static img;
@@ -394,7 +410,7 @@ class CityBuilding
 
         if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
         {
-          this.showSICount = c.SHOW_SI_COUNT;
+          this.showSICount = c.SHOW_SI_TIME;
           this.si -= param.damage;
           if( this.si < 0 )
             this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
@@ -429,6 +445,8 @@ class CityBuilding
   }
 }
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 export function buildCity( e, x, bCount, label=undefined )
 {
   let buildIx, b, building;
@@ -436,12 +454,12 @@ export function buildCity( e, x, bCount, label=undefined )
   for( b = 0;b < bCount;b++ )
   {
     buildIx = randInt( 0, CityBuilding.numBuildings - 1 );
-    building = new CityBuilding( e, x, buildIx, label=label );
-    e.objects.push( building );
+    e.objects.push( new CityBuilding( e, x, buildIx, label=label ) );
     x += randInt( 5, 8 );
   }
 }
-
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 class EBuilding // from miscBuildings.gif
 {
   static imgInfo =
@@ -521,7 +539,7 @@ class EBuilding // from miscBuildings.gif
 
         if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
         {
-          this.showSICount = c.SHOW_SI_COUNT;
+          this.showSICount = c.SHOW_SI_TIME;
           this.si -= param.damage;
           if( this.si < 0 )
             this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
@@ -555,6 +573,8 @@ class EBuilding // from miscBuildings.gif
   }
 }
 
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 export function buildEBase( e, x, bCount, label=undefined )
 {
   var b, buildIx, buildObj;
@@ -562,8 +582,7 @@ export function buildEBase( e, x, bCount, label=undefined )
   for( b = 0;b < bCount;b++ )
   {
     buildIx = randInt( 0, EBuilding.numBuildings - 1 );
-    buildObj = new EBuilding( e, x, buildIx, label="Enemy" )
-    e.objects.push( buildObj  );
+    e.objects.push( new EBuilding( e, x, buildIx, label="Enemy" )  );
     x += randInt( 7, 15 );
   }
 }

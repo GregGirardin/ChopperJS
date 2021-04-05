@@ -42,7 +42,7 @@ export const c =
   NUM_CHOPPERS          : 3,
   NUM_CITY_BUILDINGS    : 5,
   NUM_E_BASE_BUILDINGS  : 5,
-  NUM_LEVELS            : 2,
+  NUM_LEVELS            : 3,
 
   // World geometry
   HORIZON_DISTANCE : 10000,
@@ -54,27 +54,19 @@ export const c =
   DISPLAY_CONTROL_TIME : 1000, // How many ms to display the control "stick" position after movement
 
   BULLET_WAIT_TIME  :  200, // Time until we can fire again.
-  BULLET_LIFETIME   : 2000, // ms.
-  SHOW_SI_COUNT     : 2000, // How long to show an enemies structural integrity in ms
+  BULLET_LIFETIME   : 2000,
+  SHOW_SI_TIME      : 2000, // How long to show an enemies structural integrity in ms
 
-  DIR_LEFT  : 0,
-  DIR_RIGHT : 1,
-  DIR_FWD   : 2,
+  DIR_LEFT : 0, DIR_RIGHT : 1, DIR_FWD : 2,
 
   // Weapon damage
-  WEAPON_DAMAGE_BULLET    :   1.0,
+  WEAPON_DAMAGE_BULLET    :   2.0,
   WEAPON_DAMAGE_MISSLE_A  :  10.0,
   WEAPON_DAMAGE_MISSLE_B  :  30.0,
   WEAPON_DAMAGE_BOMB      : 100.0,
 
-  WEAPON_DAMAGE_JEEP  :   10.0,
-  WEAPON_DAMAGE_T1    :   20.0,
-  WEAPON_DAMAGE_T2    :   30.0,
-  WEAPON_DAMAGE_TRUCK :   15.0,
-
   // Structural integrity, "health"
   SI_CHOPPER    : 20.0, // The player
-
   SI_JEEP       : 15.0,
   SI_TRUCK      : 15.0,
   SI_TRANSPORT1 : 40.0,
@@ -99,14 +91,14 @@ export const c =
   POINTS_BUILDING   : 20, // our building that survives the level.
 
   // Full weapon payload.
-  MAX_MISSILE_A     : 20.0,
+  MAX_MISSILE_A     : 20.0, // temp
   MAX_MISSILE_B     : 4.0,
   MAX_BULLETS       : 100.0,
   MAX_BOMBS         : 4.0,
 
   // Messages to objects
   // From UI to chopper
-  MSG_UI            : 0,// a UI messages to main Q sent to chopper for handling.
+  MSG_UI            : 0, // a UI messages to main Q sent to chopper for handling.
   MSG_COLLISION_DET : 1, // Collision detected
 
   MSG_BUILDING_DESTROYED      : 10, // One of our buildings destroyed

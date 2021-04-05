@@ -1,6 +1,6 @@
 import { c } from './constants.js';
 import { Explosion } from './explosions.js';
-import { projection, Point, Vector, getRelTheta, dirFromAngle, setRelTheta, randInt } from './utils.js';
+import { projection, Point, Vector, dirFromAngle, angleDiff, randInt } from './utils.js';
 
 export class Missile
 {
@@ -43,7 +43,7 @@ export class Missile
                 },
   }
 
-  constructor( e, type, p, bodyAngle, v, owner=undefined )
+  constructor( e, type, p, bodyAngle, v, owner=undefined, level=false )
   {
     this.e = e; // engine
     this.oType = type;
@@ -53,6 +53,7 @@ export class Missile
     this.owner = owner;
     this.active = true;
     this.thrust = false; 
+    this.level = level; // Do we want the missle to "level out" or go in the body direction.
 
     this.damage = Missile.missiles[ type ].damage;
     this.lifetime = Missile.missiles[ type ].lifetime;
@@ -88,16 +89,12 @@ export class Missile
         // param is the object that collided with it.
         if( ( param.oType != this.owner.oType ) && ( param.oType != "Base" ) ) // we hit our parent, ignore this collision
         {
-          if( this.oType == "Bullet" )
-            this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Explosion( this.e, this.p, "SmokeA" ) } );
-          else
-            this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Explosion( this.e, this.p, "Explosion1" ) } );
-
+          this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                              p: new Explosion( this.e, this.p, this.oType == "Bullet" ? "SmokeA" : "Explosion1" ) } );
           this.active = false;
         }
         break;
     }
-
   }
 
   update( deltaMs )
@@ -134,11 +131,11 @@ export class Missile
 
     var vp = this.v.getPolar();
 
-    if( vp.mag > c.GRAVITY_TERM_VEL ) // terminal velocity
-      vp.mag *= .9; // decelerate
-    this.bodyAngle = vp.ang; // += this.bodyAngle < vp.ang ? .01 : -.01;
+    if( vp.m > c.GRAVITY_TERM_VEL ) // terminal velocity
+      vp.m *= .9; // decelerate
+    this.bodyAngle = vp.a; // += this.bodyAngle < vp.ang ? .01 : -.01;
     
-    this.v.setPolar( vp.ang, vp.mag );
+    this.v.setPolar( vp.a, vp.m );
 
     return true;
   }
@@ -150,9 +147,7 @@ export class Missile
     
     if( this.p.y < 0 )
     {
-      this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
-                         p: new Explosion( this.e, this.p, "SmokeA" ) } );
-
+      this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Explosion( this.e, this.p, "SmokeA" ) } );
       return false;
     }
 
@@ -163,8 +158,7 @@ export class Missile
   {
     if( this.p.y < 0 )
     {
-      this.e.qMessage( { m: c.MSG_CREATE_OBJECT,// ground explosion
-                         p: new Explosion( this.e, this.p, "Bomb" ) } );
+      this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Explosion( this.e, this.p, "Bomb" ) } );
       return false;
     }
 
@@ -173,47 +167,51 @@ export class Missile
       this.v.yc -= deltaMs / 50; // Gravity
   
       // Get to level as falling.
-      if( dirFromAngle( this.bodyAngle ) == c.DIR_RIGHT )
+      if( this.level )
       {
-        this.bodyAngle += this.bodyAngle > 0 ? -.01 : .01;
-        if( Math.abs( this.bodyAngle ) < .02 )
-          this.bodyAngle = 0;
-      }
-      else if( dirFromAngle( this.bodyAngle ) == c.DIR_LEFT )
-      {
-        this.bodyAngle += this.bodyAngle > 0 ? .01 : -.01;
-        if( Math.abs( this.bodyAngle ) > c.PI )
-          this.bodyAngle = c.PI;
+        if( dirFromAngle( this.bodyAngle ) == c.DIR_RIGHT )
+        {
+          this.bodyAngle += this.bodyAngle > 0 ? -.01 : .01;
+          if( Math.abs( this.bodyAngle ) < .02 )
+            this.bodyAngle = 0;
+        }
+        else if( dirFromAngle( this.bodyAngle ) == c.DIR_LEFT )
+        {
+          this.bodyAngle += this.bodyAngle > 0 ? .01 : -.01;
+          if( Math.abs( this.bodyAngle ) > c.PI )
+            this.bodyAngle = c.PI;
+        }
       }
     }
-    else if( this.ticks > this.lifetime ) // Out of gas, fall to the ground.
+    else if( this.ticks < this.lifetime ) // normal operation
+    {
+      var delta = deltaMs / 20;
+      this.thrust = true;
+
+      let velPolar = this.v.getPolar();
+      // let aD = angleDiff( velPolar.a, this.bodyAngle );
+      if( velPolar.m < this.spd )
+        velPolar.m += delta;
+      velPolar.a = this.bodyAngle; // += aD > 0 ? .01 : -.01;
+      this.v.setPolar( velPolar.a, velPolar.m );
+
+      if( this.level )
+      {
+        this.v.yc += this.v.yc < 0 ? delta / 5 : -delta / 5;
+        if( Math.abs( this.v.yc ) < delta * 1.1 )
+          this.v.yc = 0;
+      }
+    }
+    else // Out of gas, fall to the ground.
     {
       this.thrust = false;
-
       this.v.yc -= deltaMs / 100;
       let vp = this.v.getPolar();
       if( vp.mag > c.GRAVITY_TERM_VEL )
         vp.mag *= .99; // decelerate
       // set body to velocity direction
-      this.bodyAngle = vp.ang; // += this.bodyAngle < vp.ang ? .01 : -.01;
-      this.v.setPolar( vp.ang, vp.mag );
-    }
-    else  // normal operation
-    {
-      var delta = deltaMs / 20;
-      this.thrust = true;
-
-      if( dirFromAngle( this.bodyAngle ) == c.DIR_RIGHT )
-      {
-        if( this.v.xc < this.spd )
-          this.v.xc += delta;
-      }
-      else if( this.v.xc > -this.spd )
-        this.v.xc -= delta;
-
-      this.v.yc += this.v.yc < 0 ? delta / 5 : -delta / 5;
-      if( Math.abs( this.v.yc ) < delta * 1.1 )
-        this.v.yc = 0;
+      this.bodyAngle = vp.a; // += this.bodyAngle < vp.ang ? .01 : -.01;
+      this.v.setPolar( vp.a, vp.m );
     }
 
     return true;
