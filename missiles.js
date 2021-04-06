@@ -22,7 +22,7 @@ export class Missile
                   lifetime : 3000,
                   spd : c.MAX_MISSILE_A_VEL,
                   imgFactor : 1,
-                  colRect : [ -.5, .5, -.5, -.5 ],
+                  colRect : [ -.5, .5, .5, -.5 ],
                   falltime : 200
                 },
     MissileB :  { image : undefined, path : "images/chopper/missileB.gif", // larger
@@ -30,7 +30,7 @@ export class Missile
                   lifetime : 6000,
                   spd : c.MAX_MISSILE_B_VEL,
                   imgFactor : 1,
-                  colRect : [ -.5, .5, -.5, -.5 ],
+                  colRect : [ -1.5, .5, .5, -.5 ],
                   falltime : 400
                 },
     Bomb :      { image : undefined, path : "images/chopper/bomb.gif",
@@ -38,7 +38,7 @@ export class Missile
                   lifetime : 0, // just drops.
                   spd : c.GRAVITY_TERM_VEL,
                   imgFactor : .15,
-                  colRect : [ -.5, 1, .5, -1 ],
+                  colRect : [ -.25, 1, .25, -1 ],
                   falltime : 0
                 },
   }
@@ -87,10 +87,13 @@ export class Missile
     {
       case c.MSG_COLLISION_DET:
         // param is the object that collided with it.
-        if( ( param.oType != this.owner.oType ) && ( param.oType != "Base" ) ) // we hit our parent, ignore this collision
+        if( ( param != this.owner ) && ( param.oType != this.oType ) &&
+            ( param.oType != "Base" ) ) // ignore this collision
         {
           this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
-                              p: new Explosion( this.e, this.p, this.oType == "Bullet" ? "SmokeA" : "Explosion1" ) } );
+                              p: new Explosion( this.e,
+                                                this.p,
+                                                this.oType == "Bullet" ? "SmokeA" : "Explosion1" ) } );
           this.active = false;
         }
         break;
@@ -103,7 +106,6 @@ export class Missile
       return false;
 
     this.ticks += deltaMs;
-
     this.p.x += this.v.xc * deltaMs / 1000;
     this.p.y += this.v.yc * deltaMs / 1000;
 
@@ -122,19 +124,16 @@ export class Missile
   {
     if( this.p.y < 0 )
     {
-      this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
-                         p: new Explosion( this.e, this.p, "Bomb" ) } );
+      this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Explosion( this.e, this.p, "Bomb" ) } );
       return false;
     }
 
     this.v.yc -= deltaMs / 10; // tbd, fix. Only increase yc if < terminal velocity
-
     var vp = this.v.getPolar();
 
     if( vp.m > c.GRAVITY_TERM_VEL ) // terminal velocity
       vp.m *= .9; // decelerate
     this.bodyAngle = vp.a; // += this.bodyAngle < vp.ang ? .01 : -.01;
-    
     this.v.setPolar( vp.a, vp.m );
 
     return true;

@@ -45,7 +45,7 @@ export class Plane
               imgFactor : .4,
               points : c.POINTS_FIGHTER1,
               spd : c.MAX_FIGHTER1_VEL,
-              adjTimeMs : 1500, 
+              adjTimeMs : 800, 
               turnDelta : 175,
               maxBodyAngle : .2,
               colRect : [ -3, 1, 3, -1 ],
@@ -59,7 +59,7 @@ export class Plane
               imgFactor : .3,
               points : c.POINTS_FIGHTER2,
               spd : c.MAX_FIGHTER2_VEL,
-              adjTimeMs : 1000, 
+              adjTimeMs : 500, 
               turnDelta : 100, // fast aggressive
               maxBodyAngle : .25,
               colRect : [ -3, 1, 3, -1 ],
@@ -83,11 +83,13 @@ export class Plane
     this.bombs = p.bombs;
     this.colRect = p.colRect;
     this.spd = p.spd;
+    this.tgtspd = p.spd;
     this.max_si = this.si = p.si;
     this.points = p.points;
     this.v = new Vector();
     this.v.setPolar( this.bodyAngle, p.spd );
     this.showSICount = 0;
+    this.state = undefined; // give planes some intelligence with a state machine.
 
     if( !Plane.planes.Bomber1.image )
       for( const[ k, o ] of Object.entries( Plane.planes ) )
@@ -122,25 +124,15 @@ export class Plane
       return false;
     }
 
-    if( dirFromAngle( this.bodyAngle ) != dirFromAngle( this.tgtBodyAngle )  )
-      this.bodyAngle = this.tgtBodyAngle; // changed direction, just set it.
-    else if( dirFromAngle( this.bodyAngle ) == c.DIR_RIGHT )
-    {
-      if( Math.abs( this.bodyAngle - this.tgtBodyAngle ) < .1 )
-        this.bodyAngle = this.tgtBodyAngle; // close enough, set exactly.
-      else
-        this.bodyAngle += ( this.bodyAngle < this.tgtBodyAngle ) ? .02 : -.02;
-    }
-    else // facing left
-    {
-      const tgtRel = getRelTheta( this.tgtBodyAngle );
-      const actRel = getRelTheta( this.bodyAngle );
+    // Adjust body angle to approach target body angle.
+    const tgtRel = getRelTheta( this.tgtBodyAngle );
+    const actRel = getRelTheta( this.bodyAngle );
 
-      if( Math.abs( tgtRel - actRel ) < .1 )
-        this.bodyAngle = this.tgtBodyAngle; // close, just set it.
-      else
-        this.bodyAngle = setRelTheta( this.bodyAngle, ( actRel < tgtRel ) ? actRel + .02 : actRel - .02 );
-    }
+    if( ( dirFromAngle( this.bodyAngle ) != dirFromAngle( this.tgtBodyAngle ) ) ||
+          Math.abs( tgtRel - actRel ) < .02 )
+      this.bodyAngle = this.tgtBodyAngle; // changed direction, or quite close to tgt. Just set it
+    else // tbd: incorporate deltaMs, should be plane specific too.
+      this.bodyAngle = setRelTheta( this.bodyAngle, actRel < tgtRel ? actRel + .003 : actRel - .003 );
 
     // plane specific update
     var value = true;
@@ -157,6 +149,7 @@ export class Plane
     }
 
     // translate
+    this.spd += ( this.spd < this.tgtspd ) ? .1 : -.1; // tbd, adjust for deltaMs
     this.v.setPolar( this.bodyAngle, this.spd );
     this.p.x += this.v.xc * deltaMs / 1000;
     this.p.y += this.v.yc * deltaMs / 1000;
@@ -164,12 +157,26 @@ export class Plane
     return value;
   }
 
-  /////////////////////////////////////////////////
-  // specific updates for different types of planes.
-  /////////////////////////////////////////////////
+  /* /////////////////////////////////////////////////
+    Bomber state machine
+    APPROACHING
+      Choose target.
+      Go towards target.
+      Adjust altutude down if close to garget.
+      drop bomb if target is close
+      turn around after passed the last building
+
+    DEPARTING
+      go to random highish altitude
+      turn around after reload location MIN/MAX_WORLD_X
+
+  ///////////////////////////////////////////////// */
   bomberUpdate( deltaMs )
   {
-    if( this.p.x < c.MIN_WORLD_X - 50 ) // To the left of the theater, turn around.
+    if( !this.state )
+      this.state = "APPROACHING";
+
+    if( this.p.x < c.MIN_WORLD_X - 50 )  // To the left of the theater, turn around.
     {
       this.target_y = randInt( 75, 100 );
       this.tgtBodyAngle = 0; // go right
@@ -192,8 +199,7 @@ export class Plane
         // adjust angle to reach target y
         if( Math.abs( this.p.y - this.target_y ) > .5 ) // not at target y
         {
-          this.tgtBodyAngle = setRelTheta( this.tgtBodyAngle,
-                                           this.p.y < this.target_y ? this.maxBodyAngle : -this.maxBodyAngle );
+          this.tgtBodyAngle = setRelTheta( this.tgtBodyAngle, this.p.y < this.target_y ? this.maxBodyAngle : -this.maxBodyAngle );
           this.nextAngleAdjustMs = 500; // check often until at target y
         }
         else
@@ -207,9 +213,7 @@ export class Plane
               if( Math.abs( this.e.objects[ index ].p.x - this.p.x ) < 10 )
               {
                 this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
-                                   p: new Missile( this.e, "Bomb", new Point( this.p.x, this.p.y, 1 ),
-                                                   this.bodyAngle, this.v, this ) } );
-
+                                   p: new Missile( this.e, "Bomb", new Point( this.p.x, this.p.y, 1 ), this.bodyAngle, this.v, this ) } );
                 this.bombs -= 1;
                 this.nextAngleAdjustMs = 2500;
                 break;
@@ -220,46 +224,100 @@ export class Plane
 
     return( true );
   }
+  
+  /* /////////////////////////////////////////////////
+    Fighter state machine
+    APPROACHING
+      Slow down
+      Go towards helo altitude +/-
+      Adjust altitude to match helo periodically.
+      Shoot missiles if close enough
 
-  /////////////////////////////////////////////////
-  /////////////////////////////////////////////////
+    DEPARTING
+      Accellerate away
+      go to random altitude
+      turn around after turnDelta distance from Helo and enter APPROACHING
+
+  ///////////////////////////////////////////////// */
   fighterUpdate( deltaMs )
   {
-    if( Math.abs( this.p.x - this.e.chopper.p.x ) > this.turnDelta ) // Need to turn around.
-      this.tgtBodyAngle = ( this.p.x > this.e.chopper.p.x ) ? c.PI : 0;
-    else
+    if( !this.state )
+      this.state = "APPROACHING";
+
+    if( ( Math.abs( this.p.x - this.e.chopper.p.x ) > this.turnDelta ) &&
+        ( this.state == "DEPARTING" ) )// Need to turn around.
     {
-      this.nextAngleAdjustMs -= deltaMs;
-      if( this.nextAngleAdjustMs < 0 )
-      {
-        this.nextAngleAdjustMs = this.adjTimeMs;
-        if( Math.abs( this.p.y - this.e.chopper.p.y ) < 5 )
+      // console.log( "APPROACHING" );
+
+      this.state = "APPROACHING";
+      this.target_y = randInt( -2, 4 ); // Offset from Helo Y to use. 
+      this.tgtBodyAngle = ( this.p.x > this.e.chopper.p.x ) ? c.PI : 0;
+      this.tgtspd = Plane.planes[ this.oType ].spd * .8;
+    }
+    const planeDir = dirFromAngle( this.tgtBodyAngle );
+
+    if( ( ( ( planeDir == c.DIR_RIGHT ) && ( this.p.x > this.e.chopper.p.x ) ) ||
+          ( ( planeDir == c.DIR_LEFT ) && ( this.p.x < this.e.chopper.p.x ) ) ) &&
+          this.state == "APPROACHING" )
+    {
+      // console.log( "DEPARTING to ", this.target_y );
+
+      this.state = "DEPARTING";
+      this.target_y = randInt( 30, 70 ); // target altitude.
+      this.tgtspd = Plane.planes[ this.oType ].spd * 1.2;
+    }
+
+    switch( this.state )
+    {
+      case "APPROACHING":
+
+        this.nextAngleAdjustMs -= deltaMs;
+        if( this.nextAngleAdjustMs < 0 )
+        {
+          this.nextAngleAdjustMs = this.adjTimeMs;
+          const targY = this.e.chopper.p.y + this.target_y;
+          if( Math.abs( this.p.y - targY ) < 5 )
+            this.tgtBodyAngle = setRelTheta( this.bodyAngle, 0 );
+          else if( this.p.y > targY ) // we're higher, descend.
+            this.tgtBodyAngle = setRelTheta( this.bodyAngle, -this.maxBodyAngle );
+          else // we're lower, ascend.
+            this.tgtBodyAngle = setRelTheta( this.bodyAngle, this.maxBodyAngle );
+        }
+        if( this.p.y < 5 )
+          this.tgtBodyAngle = setRelTheta( this.bodyAngle, .05 );
+
+        if( this.nextMissile > 0 )
+          this.nextMissile -= deltaMs;
+        else // time to shoot a missile when we can
+        {
+          // only shoot if we're going towards the chopper and are reasonably close
+          if( Math.abs( this.e.chopper.p.x - this.p.x ) < 25 )
+          {
+            this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                              p: new Missile( this.e, "MissileA", new Point( this.p.x, this.p.y, 1 ),
+                                              this.bodyAngle, this.v, this ) } );
+            this.nextMissile = randInt( 500, 2000 );
+            this.tgtspd = Plane.planes[ this.oType ].spd * .8; // slow down to attack
+          }
+          else
+            this.tgtspd = Plane.planes[ this.oType ].spd; // catch up to helo.
+        }
+
+        break;
+
+      case "DEPARTING":
+
+        if( Math.abs( this.p.y - this.target_y ) < 4 )
           this.tgtBodyAngle = setRelTheta( this.bodyAngle, 0 );
-        else if( this.p.y > this.e.chopper.p.y ) // we're higher, descend.
+        else if( this.p.y > this.target_y ) // we're higher, descend.
           this.tgtBodyAngle = setRelTheta( this.bodyAngle, -this.maxBodyAngle );
         else // we're lower, ascend.
           this.tgtBodyAngle = setRelTheta( this.bodyAngle, this.maxBodyAngle );
-      }
-      if( this.p.y < 10 )
-        this.tgtBodyAngle = setRelTheta( this.bodyAngle, .05 );
-    }
 
-    if( this.nextMissile > 0 )
-      this.nextMissile -= deltaMs;
-    else  // time to shoot a missile when we can
-    {
-      // only shoot if we're going towards the chopper and are reasonably close
+        break;
 
-      let planeDir = dirFromAngle( this.bodyAngle );
-      if( ( ( ( planeDir == c.DIR_RIGHT ) && this.e.chopper.p.x > this.p.x ) ||
-            ( ( planeDir == c.DIR_LEFT ) && this.e.chopper.p.x < this.p.x ) ) &&
-          ( Math.abs( this.e.chopper.p.x - this.p.x ) < 50 ) )
-      {
-        this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
-                           p: new Missile( this.e, "MissileA", new Point( this.p.x, this.p.y, 1 ),
-                                           this.bodyAngle, this.v, this ) } );
-        this.nextMissile = randInt( 500, 3000 );
-      }
+      default:
+        break;
     }
 
     return true;
@@ -289,7 +347,7 @@ export class Plane
     const projShadow = projection( this.e.camera, new Point( p.x, 0, 0 ) );
     this.e.ctx.fillStyle = 'black';
     this.e.ctx.beginPath();
-    this.e.ctx.ellipse( p.x, projShadow.y, this.w/3, 2, 0, 0, 2 * c.PI );
+    this.e.ctx.ellipse( p.x, projShadow.y, this.w / 3, 2, 0, 0, 2 * c.PI );
     this.e.ctx.fill();
 
     if( this.showSICount > 0 )

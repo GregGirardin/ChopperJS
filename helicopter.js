@@ -1,7 +1,6 @@
 import { c } from './constants.js';
-import { Point, projection, setRelTheta, getRelTheta, Vector, dirFromAngle, showSI } from './utils.js';
+import { Point, projection, setRelTheta, Vector } from './utils.js';
 import { Missile } from './missiles.js';
-//import { Explosion } from './explosions.js';
 
 export class Helicopter
 {
@@ -32,12 +31,13 @@ export class Helicopter
     this.chopperDir = c.DIR_FWD;
     this.weapon = undefined; // This gets set and then fired in the next update()
                              // Trying to keep msg processing loosely coupled.
-    this.curAmount = { fuel     : Helicopter.resourceMaxAmount.fuel,
-                       StructI  : Helicopter.resourceMaxAmount.StructI,
-                       bullets  : Helicopter.resourceMaxAmount.bullets,
-                       missileA : Helicopter.resourceMaxAmount.missileA,
-                       missileB : Helicopter.resourceMaxAmount.missileB,
-                       bombs    : Helicopter.resourceMaxAmount.bombs };
+    var rma = Helicopter.resourceMaxAmount;
+    this.curAmount = { fuel     : rma.fuel,
+                       StructI  : rma.StructI,
+                       bullets  : rma.bullets,
+                       missileA : rma.missileA,
+                       missileB : rma.missileB,
+                       bombs    : rma.bombs };
 
     this.bulletRdyCounter = 0;
     this.displayStickCount = 0;

@@ -402,7 +402,7 @@ class GameManager
     this.e = e;
     this.gameTime = 0;
     this.gameLevel = level;
-    this.numEnemies = 5 + level * 5;
+    this.numEnemies = 1; // 5 + level * 5;
     this.timeToNextSpawn = 3000;
     this.p = new Point( 0, 0, 0 );
   }
@@ -429,13 +429,13 @@ class GameManager
       this.numEnemies -= 1;
       if( !this.numEnemies )
         this.e.spawningComplete = true;
-      this.timeToNextSpawn = randInt( 2000, 5000 );
+      this.timeToNextSpawn = randInt( 5000, 15000 );
       let spX = this.e.chopper.p.x + randInt( 100, 200 );
       let spY = randInt( 5, 50 );
  
       // Possible enemies.
       // "Jeep", "Transport1", "Transport2", "Truck", "Tank",  "Bomber1", "Bomber2", "Fighter1", "Fighter2"
-      const newEnemy = randInt( 0, 8 );
+      const newEnemy = 7; //tbd randInt( 0, 8 );
       switch( newEnemy )
       {
         case 0: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Vehicle( this.e, "Jeep",        spX ) } ); break;
