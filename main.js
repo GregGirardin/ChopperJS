@@ -1,5 +1,5 @@
 import { c } from './constants.js';
-import { SkyGround, Mtn, Hill, Cloud, Rock, Grass, Tree, Base, buildCity, buildEBase } from './background.js';
+import { SkyGround, Mtn, Hill, Cloud, Rock, Grass, Tree, Base, buildBase, buildTown } from './background.js';
 import { Point, projection, collisionCheck, displayColRect, drawCoords, randInt } from './utils.js';
 import { Helicopter } from './helicopter.js';
 import { Plane } from './planes.js';
@@ -23,7 +23,7 @@ class gameEngine
     this.dx = 2;
     this.dy = -2;
 
-    this.debugCoords = true; // Show x,y and collision box
+    this.debugMode = true; // Show x,y, collision box, etc.
     this.chopper = undefined;
     this.highScore = 0;
     this.msgQ = []; // Q of messages send to Engine to loosely couple messaging
@@ -48,7 +48,7 @@ class gameEngine
 
   newGame()
   {
-    this.camera = new Point( 0, 15, c.CAM_Z );
+    this.camera = new Point( 0, 5, c.CAM_Z );
     this.level = 1;
     this.score = 0;
     this.numChoppers = c.NUM_CHOPPERS;
@@ -61,7 +61,7 @@ class gameEngine
     var z;
 
     this.cameraOnHelo = false;
-    // this.enemyBaseDestroyed = false;
+    this.enemyBaseDestroyed = false;
     this.spawningComplete = false;
     this.allEnemiesDestroyed = false;
     this.fadeInCount = 0;
@@ -78,19 +78,21 @@ class gameEngine
                                  randInt( c.MIN_WORLD_X - 1000, c.MAX_WORLD_X * 2 ),
                                  randInt( 150, 225 ),
                                  randInt( 50, c.HORIZON_DISTANCE / 4 ) ) ); // in front of the mountains
-    for( z = 2;z < 22;z += 1 )
-      this.addObject( new Rock( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
+    for( z = 5;z < 300;z += 5 )
+      this.addObject( new Rock( this, randInt( c.MIN_WORLD_X, c.MAX_WORLD_X ), 0, z ) );
     for( z = 25;z < 50;z++ )
-      this.addObject( new Grass( this, randInt( 100, c.MAX_WORLD_X ), 0, z ) );
+      this.addObject( new Grass( this, randInt( c.MIN_WORLD_X, c.MAX_WORLD_X ), 0, z ) );
     for( z = 20;z < 500;z += 5 )
-      this.addObject( new Tree( this, randInt( 40, c.MAX_WORLD_X ), 0, z ) );
-    this.addObject( new Base( this, 0, 0, 2, "Base" ) );
+      this.addObject( new Tree( this, randInt( c.MIN_WORLD_X, c.MAX_WORLD_X ), 0, z ) );
 
-    this.chopper = new Helicopter( this, 0, 0, 1 );
+    this.addObject( new Base( this, c.BASE_LOCATION ) );
+
+    this.chopper = new Helicopter( this, c.BASE_LOCATION );
     this.addObject( this.chopper );
 
-    buildCity( this, c.MIN_WORLD_X, c.NUM_CITY_BUILDINGS );
-    buildEBase( this, c.MAX_WORLD_X / 2, c.NUM_E_BASE_BUILDINGS + this.level * 2 );
+    buildTown( this, "Town", c.BASE_LOCATION - 100, c.BASE_LOCATION - 15, c.NUM_BUILDINGS );
+    buildBase( this, "Base", this.debugMode ? c.BASE_LOCATION + 50 : c.E_BASE_LOCATION,
+               c.NUM_E_BASE_BUILDINGS + this.level * 2 );
 
     this.addObject( new GameManager( this, this.level ) );
   }
@@ -106,38 +108,42 @@ class gameEngine
         break;
 
       case c.MSG_BUILDING_DESTROYED:
+
         var anyBuildings = false;
         for( index = 0;index < this.objects.length;index++ )
-          if( this.objects[ index ].oType == "CityBuilding" )
+          if( this.objects[ index ].oType == "Town" )
           {
             anyBuildings = true;
             break;
           }
         if( !anyBuildings )
         {
-          this.addStatusMessage( { m : "City Destroyed!", t : 2000 } );
+          this.addStatusMessage( { m : "Town Destroyed!", t : 2000 } );
           this.gameOver();
         }
         else
-          this.addStatusMessage( { m : "City Bombed", t : 1000 } );
+          this.addStatusMessage( { m : "Town Bombed", t : 1000 } );
         break;
 
       case c.MSG_E_BUILDING_DESTROYED:
+
         var anyBuildings = false;
         for( index = 0;index < this.objects.length;index++ )
-          if( this.objects[ index ].oType == "EnemyBuilding" )
+          if( this.objects[ index ].oType == "Base" )
           {
             anyBuildings = true;
             break;
           }
         if( !anyBuildings )
         {
-          // this.enemyBaseDestroyed = true;
-          this.addStatusMessage( { m : "Enemy Base Destroyed!", t : 1000 } );
+          this.enemyBaseDestroyed = true;
+          this.addStatusMessage( { m : "Enemy Base Destroyed!", t : 1500 } );
+          this.addStatusMessage( { m : "Return to Base", t : 1000 } );
         }
         break;
   
       case c.MSG_ENEMY_LEFT_BATTLEFIELD:
+
         this.modScore( param.points );
         var anyEnemies = false;
         for( index = 0;index < this.objects.length;index++ )
@@ -149,11 +155,12 @@ class gameEngine
         if( !anyEnemies && this.spawningComplete )
         {
           this.allEnemiesDestroyed = true;
-          this.addStatusMessage( { m : "All Enemies Destroyed, return to base", t : 1000 } );
+          this.addStatusMessage( { m : "All Enemies Destroyed", t : 1000 } );
         }
         break;
 
       case c.MSG_CHOPPER_DESTROYED:
+
         this.numChoppers -= 1;
         if( this.numChoppers == 0 )
           this.gameOver();
@@ -161,7 +168,7 @@ class gameEngine
         {
           this.addStatusMessage( { m : "Chopper Destroyed", t : 1000 } );
           this.currentCamOff = this.chopper.p.x; // So the camera pans from where we are back to base.
-          this.chopper = new Helicopter( this, 0, 0, 1 );
+          this.chopper = new Helicopter( this, c.BASE_LOCATION );
           this.addObject( this.chopper );
           this.fadeInCount = 0;
         }
@@ -171,28 +178,32 @@ class gameEngine
         break;
 
       case c.MSG_MISSION_COMPLETE:
+
         this.addStatusMessage( { m: "Level Complete.", t : 1000 } );
-        var cityBonus = 0;
+
+        var bonus = 0;
         for( index = 0;index < this.objects.length;index++ )
-          if( this.objects[ index ].oType == "CityBuilding" )
-            cityBonus += c.POINTS_BUILDING;
-        if( cityBonus )
-          this.addStatusMessage( { m : "City bonus " + cityBonus, t : 1000 } )
-          this.modScore( cityBonus )
+          if( this.objects[ index ].oType == "Building" )
+            bonus += c.POINTS_BUILDING;
+        if( bonus )
+        {
+          this.addStatusMessage( { m : "Building Bonus " + bonus, t : 1000 } );
+          this.modScore( bonus );
+        }
 
         this.level += 1;
         if( this.level > c.NUM_LEVELS )
         {
-          this.addStatusMessage( { m :"All levels complete!", t : 1000 } );
+          this.addStatusMessage( { m : "All levels complete!", t : 2000 } );
           this.gameOver();
         }
         else
           this.newLevel();
-
         break;
 
       case c.MSG_CHOPPER_AT_BASE:
-        if( this.allEnemiesDestroyed && this.missionInProgress )
+
+        if( this.enemyBaseDestroyed && this.missionInProgress )
         {
           this.missionInProgress = false;
           this.qMessage( { m : c.MSG_MISSION_COMPLETE, p : undefined } );
@@ -200,6 +211,7 @@ class gameEngine
         break;
 
       case c.MSG_CREATE_OBJECT:
+
         this.objects.push( param );
         this.objects.sort( function( a, b ){ return b.p.z - a.p.z } );
         break;
@@ -333,10 +345,10 @@ class gameEngine
       if ( typeof o.draw === 'function' ) 
       {
         p = projection( this.camera, o.p );
-        if( p.x < c.SCREEN_WIDTH + c.SCREEN_PAD && p.x > -c.SCREEN_PAD )
+        if( p.x < c.SCREEN_WIDTH + c.SCREEN_PAD && p.x > -c.SCREEN_PAD ) // gmg
         {
           o.draw( p );
-          if( this.debugCoords )
+          if( this.debugMode )
           {
             if( typeof o.colRect === 'object' )
               displayColRect( this, o );
@@ -359,6 +371,28 @@ class gameEngine
       this.ctx.fillText( this.currentMessage,
                          c.SCREEN_WIDTH / 2 - this.currentMessage.length * 8, c.SCREEN_HEIGHT / 2 );
     }
+  }
+
+  // find the X coord of the closest object of 'type'
+  closestObject( type, x )
+  {
+    let index = 0, dist = 10 ** 6, objX = undefined;
+
+    // find the closest building to guard
+    for( index = 0;index < this.objects.length;index++ )
+    {
+      let o = this.objects[ index ];
+
+      const d = Math.abs( o.p.x - x );
+
+      if( ( o.oType == type ) && ( d < dist ) )
+      {
+        dist = d;
+        objX = o.p.x;
+      }
+    }
+
+    return objX;
   }
 
   //////////////////////////////////////
@@ -402,7 +436,7 @@ class GameManager
     this.e = e;
     this.gameTime = 0;
     this.gameLevel = level;
-    this.numEnemies = 1; // 5 + level * 5;
+    this.numEnemies = 5 + level * 5;
     this.timeToNextSpawn = 3000;
     this.p = new Point( 0, 0, 0 );
   }
@@ -411,11 +445,17 @@ class GameManager
   { 
     if( this.gameTime == 0 )
     {
+      //if( this.e.debugMode )
+      //  this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Tank( this.e, c.BASE_LOCATION + 25 ) } );
+
       if( this.gameLevel == 1 )
       {
-        this.e.addStatusMessage( { m : "Defend the city", t : 2000 } );
-        this.e.addStatusMessage( { m : "Destroy enemy buildings ->", t :2000 } );
-        this.e.addStatusMessage( { m : "Press ? for directions", t :2000 } );
+        if( this.e.debugMode )
+          this.e.addStatusMessage( { m : "- Debug Mode -", t : 2000 } );
+        
+        this.e.addStatusMessage( { m : "Destroy Enemy Base ->", t : 2000 } );
+        this.e.addStatusMessage( { m : "Defend the Town", t : 2000 } );
+        this.e.addStatusMessage( { m : "Press ? for directions", t : 2000 } );
       } 
       let msg = "Level " + this.gameLevel;
       this.e.addStatusMessage( { m : msg, t : 2000 } );
@@ -429,13 +469,14 @@ class GameManager
       this.numEnemies -= 1;
       if( !this.numEnemies )
         this.e.spawningComplete = true;
-      this.timeToNextSpawn = randInt( 5000, 15000 );
+      this.timeToNextSpawn = randInt( 5000, 10000 );
       let spX = this.e.chopper.p.x + randInt( 100, 200 );
       let spY = randInt( 5, 50 );
  
       // Possible enemies.
-      // "Jeep", "Transport1", "Transport2", "Truck", "Tank",  "Bomber1", "Bomber2", "Fighter1", "Fighter2"
-      const newEnemy = 7; //tbd randInt( 0, 8 );
+      // "Jeep", "Transport1", "Transport2", "Truck", 
+      // "Tank",  "Bomber1", "Bomber2", "Fighter1", "Fighter2"
+      const newEnemy = randInt( 0, 8 );
       switch( newEnemy )
       {
         case 0: this.e.qMessage( { m: c.MSG_CREATE_OBJECT, p: new Vehicle( this.e, "Jeep",        spX ) } ); break;
@@ -459,7 +500,7 @@ class GameManager
 let gEngine;
 let lastTimestamp = 0;
 function gameLoop( timeStamp )
-{
+{ 
   var delta = timeStamp - lastTimestamp;
   lastTimestamp = timeStamp;
   gEngine.loop( delta );

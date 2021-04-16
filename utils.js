@@ -141,69 +141,7 @@ export class Vector
   }
 }
 
-// class VectorPolar // Cases where using polar coords is more efficent.
-// {
-//   constuctor( m=0, d=0 )
-//   {
-//     this.m = m; // store as polar. Convert to cartesian when necessary
-//     this.d = d;
-//   }
-
-//   setCart( dx, dy )
-//   {
-//     this.m = Math.sqrt( dx ** 2 + dy ** 2 );
-
-//     if( this.m < c.EFFECTIVE_ZERO )
-//       this.d = 0;
-//     else
-//     {
-//       if( Math.abs( dx ) < EFFECTIVE_ZERO )
-//         if( dy > 0 )
-//           this.d = c.PI / 2;
-//         else
-//           this.d = -c.PI / 2;
-//       else if( dx > 0 )
-//         this.d = Math.atan( dy / dx );
-//       else
-//         this.d = PI + Math.atan( dy / dx );
-//     }
-//   }
-
-//   modCart( dx, dy )
-//   {
-//     v = this.getCart();
-//     v.dx += dx;
-//     v.dy += dy;
-//     this.setCart( v.dx, v.dy );
-//   }
-// }
-
-
-// export function polarFromCart( dx, dy )
-// {
-//   const mag = Math.sqrt( dx ** 2 + dy ** 2 );
-//   let dir = undefined
-
-//   if( mag < c.EFFECTIVE_ZERO )
-//     dir = 0;
-//   else
-//   {
-//     if( Math.abs( dx ) < EFFECTIVE_ZERO )
-//       if( dy > 0 )
-//         dir = c.PI / 2;
-//       else
-//         dir = -c.PI / 2;
-//     else if( dx > 0 )
-//       dir = Math.atan( dy / dx );
-//     else
-//       dir = PI + Math.atan( dy / dx );
-//   }
-//   return { mag, dir };
-// }
-
-
 // Given a Camera at Point cam and a point at p, compute the screen coordinates. See projection.jpg
-
 export function projection( cam, p )
 {
   const x1 = p.x - cam.x; // translate to camera coords (like p is at 0,0)
@@ -288,9 +226,7 @@ export function drawCoords( e, p )
 
 // Horizontal distance to the nearest object of type oType
 // + means it's in the +x direction, neg means -x direction
-export function distanceToObjectType( e, xPos, oType )
-{
-}
+export function distanceToObjectType( e, xPos, oType ) { }
 
 export function showSI( e, p, pct )
 {
@@ -308,4 +244,14 @@ export function showSI( e, p, pct )
 export function randInt( min, max )
 {
   return Math.floor( Math.random() * ( max - min ) ) + min;
+}
+
+var audioFiles = [];
+
+export function playAudio( )
+{
+  var index;
+
+  var audio = new Audio( './sounds/Chopper1.mp3' );
+  audio.play();
 }

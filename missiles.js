@@ -49,7 +49,8 @@ export class Missile
     this.oType = type;
     this.p = p; // point
     this.bodyAngle = bodyAngle;
-    this.v = new Vector( v.xc, v.yc );
+    this.v = v ? new Vector( v.xc, v.yc ) : new Vector( Missile.missiles[ type ].spd * Math.cos( bodyAngle ),
+                                                        Missile.missiles[ type ].spd * Math.sin( bodyAngle ) );
     this.owner = owner;
     this.active = true;
     this.thrust = false; 
@@ -87,13 +88,10 @@ export class Missile
     {
       case c.MSG_COLLISION_DET:
         // param is the object that collided with it.
-        if( ( param != this.owner ) && ( param.oType != this.oType ) &&
-            ( param.oType != "Base" ) ) // ignore this collision
+        if( ( param != this.owner ) && ( param.oType != this.oType ) && ( param.oType != "Homebase" ) ) // ignore this collision
         {
           this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
-                              p: new Explosion( this.e,
-                                                this.p,
-                                                this.oType == "Bullet" ? "SmokeA" : "Explosion1" ) } );
+                             p: new Explosion( this.e, this.p, this.oType == "Bullet" ? "SmokeA" : "Explosion1" ) } );
           this.active = false;
         }
         break;

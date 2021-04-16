@@ -1,5 +1,5 @@
 import { c } from './constants.js';
-import { Point, projection, setRelTheta, Vector } from './utils.js';
+import { Point, projection, setRelTheta, Vector, playAudio } from './utils.js';
 import { Missile } from './missiles.js';
 
 export class Helicopter
@@ -14,13 +14,13 @@ export class Helicopter
                                missileB : c.MAX_MISSILE_B,
                                bombs    : c.MAX_BOMBS };
 
-  constructor( e, x, y, z )
+  constructor( e, x )
   {
     this.debugCounter = 0;
 
     this.e = e;
     this.oType = "Chopper";
-    this.p = new Point( x, y, z );
+    this.p = new Point( x, 0, 0 );
     this.colRect = [ -1, 2, 1, 0 ];
     this.rotVertex = new Point();
     this.rotorTheta = 0.0;
@@ -173,7 +173,7 @@ export class Helicopter
           if( param.owner.oType != this.oType ) // one of our own?
             this.curAmount.StructI -= param.damage;
         }
-        else if( param.oType == "Base" )
+        else if( param.oType == "Homebase" )
         {
           for( const[ k, o ] of Object.entries( Helicopter.resourceMaxAmount ) ) {
             let wantedAmt, availAmt;

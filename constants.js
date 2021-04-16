@@ -18,9 +18,9 @@ export const c =
   MAX_TANK_VEL    :  4,
 
   MAX_BOMBER1_VEL  : 19,
-  MAX_BOMBER2_VEL  : 15,
+  MAX_BOMBER2_VEL  : 12,
   MAX_FIGHTER1_VEL : 22,
-  MAX_FIGHTER2_VEL : 25,
+  MAX_FIGHTER2_VEL : 28,
 
   MAX_BULLET_VEL    : 70,
   MAX_MISSILE_A_VEL : 60,
@@ -36,11 +36,13 @@ export const c =
   EFFECTIVE_ZERO : .001,
 
   // Think of these in terms of meters maybe
-  MIN_WORLD_X : -50,
-  MAX_WORLD_X : 500,
+  MIN_WORLD_X : 0,
+  MAX_WORLD_X : 1000,
+  BASE_LOCATION : 250,
+  E_BASE_LOCATION : 750,
 
   NUM_CHOPPERS          : 3,
-  NUM_CITY_BUILDINGS    : 5,
+  NUM_BUILDINGS         : 20,
   NUM_E_BASE_BUILDINGS  : 5,
   NUM_LEVELS            : 3,
 
@@ -76,7 +78,6 @@ export const c =
   SI_BOMBER1    : 70.0,
   SI_BOMBER2    : 30.0,
   SI_BUILDING   : 50.0,
-  SI_E_BUILDING : 50.0,
   SI_TANK       : 150.0,
 
   // points
@@ -88,7 +89,7 @@ export const c =
   POINTS_FIGHTER1   : 30,
   POINTS_FIGHTER2   : 30,
   POINTS_E_BUILDING : 10, // enemy base building.
-  POINTS_BUILDING   : 20, // our building that survives the level.
+  POINTS_BUILDING   : 5, // Building that survives the level.
 
   // Full weapon payload.
   MAX_MISSILE_A     : 20.0, // temp

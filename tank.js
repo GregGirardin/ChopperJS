@@ -1,16 +1,9 @@
 import { c } from './constants.js';
-import { Point, dirFromAngle, showSI } from './utils.js';
+import { Point, dirFromAngle, showSI, randInt } from './utils.js';
 import { Missile } from './missiles.js';
 import { Explosion } from './explosions.js';
 
-const S = // Tank operational State Machine.
-{
-  TANK_STATE_MOVE_TO_ATK  : 0,  // go to building
-  TANK_STATE_ATK_CHOPPER  : 1,  // Helo present. Engage
-  TANK_STATE_SHELLING     : 2,  // in position
-  TANK_STATE_RELOAD       : 3,  // out of weapons, go back to reload.
-  TANK_STATE_GUARD        : 4   // Wait here until the chopper comes local
-}
+const maxCannonAngle = .5; // min is 0
 
 export class Tank
 {
@@ -21,17 +14,21 @@ export class Tank
   {
     this.e = e;
     this.oType = "Tank";
-    this.p = new Point( x, 0, 1 );
+    this.p = new Point( x, -1, 1 );
     this.colRect = [ -4, 4, 4, 0 ];
     this.cannonAngle = .1; // relative angle 'up' from level (left or right)
+    this.tgtCannonAngle = this.cannonAngle;
+    this.canonAtTarget = true;
     this.max_si = this.si = c.SI_TANK;
     this.points = c.POINTS_TANK;
     this.showSICount = 0;
-    this.state = S.TANK_STATE_GUARD; // use a bit of a state machine for tank AI
+    this.state = "Select"; // use a bit of a state machine for tank AI
     this.smTimer = 2000; // run the state machine once in a while
     this.bodyAngle = c.PI;
-    this.spd = c.MAX_TANK_VEL;
+    this.spd = 0;
     this.f = .9; // image scale factor
+    this.target_x = undefined; // Where does the tank want to go?
+    this.fireWeapon = false;
 
     if( !Tank.tankImage )
     {
@@ -59,6 +56,26 @@ export class Tank
     }
   }
 
+/* Tank State Machine
+"Select"
+  Determine if we should
+    Guard a building,
+    Attack a town building,
+    "Engage" the helo
+    "Idle" longer
+    do randomly weighted with appropriate parameters
+
+"Guard"
+  Move to a base building.
+  Wait to engage chopper.
+
+"EngageTown"
+  move to town building and destroy.
+
+"EngageHelo"
+  Pursuing the helo
+*/
+
   update( deltaMs )
   {
     if( this.si < 0 )
@@ -67,28 +84,179 @@ export class Tank
       return false;
     }
 
-    this.p.x += this.spd * deltaMs / 1000 * Math.cos( this.bodyAngle );
-
-    if( this.p.x < c.MIN_WORLD_X )
-      this.bodyAngle = 0;
-    else if( this.p.x > c.MAX_WORLD_X )
-      this.bodyAngle = c.PI;
+    if( this.showSICount > 0 )
+      this.showSICount -= deltaMs;
 
     this.smTimer -= deltaMs;
+
     if( this.smTimer < 0 )
     {
-      this.smTimer = 2000;
+      this.smTimer = 1000 + 500 * randInt( 1, 4 );
 
       // Behavior / AI
       switch( this.state )
       {
-        case S.TANK_STATE_GUARD: break;
-        case S.TANK_STATE_MOVE_TO_ATK: break;
-        case S.TANK_STATE_SHELLING: break;
-        case S.TANK_STATE_ATK_CHOPPER: break;
+        case "Select":
+
+          // decide what to do
+          switch( 2 ) // randInt( 0, 2 ) )
+          {
+            case 0: this.state = "Guard"; break;
+            case 1: this.state = "AttackTown"; break;
+            case 2: this.state = "EngageHelo"; break;
+          }
+          break;
+
+        case "Guard":
+
+          var tx = this.e.closestObject( "Base", this.p.x );
+          if( !this.target_x )
+            this.target_x = tx;
+          else if( this.atTargetX() )
+          {
+            // At target. Make sure it's still there, else find a new one to guard.
+            if( tx != this.target_x )
+              this.target_x = tx;
+            else
+            {
+              // park and face chopper direction
+              this.spd = 0;
+              this.bodyAngle = ( this.p.x < this.e.chopper.p.x  ) ? 0 : c.PI;
+            }
+          }
+          else // proceed to target_x
+          {
+            this.spd = c.MAX_TANK_VEL;
+            this.bodyAngle = ( this.p.x < this.target_x ) ? 0 : c.PI;
+          }
+
+          // if( Math.abs( this.p.x - this.e.chopper.p.x ) < 20 )
+          //   this.state = "EngageHelo";
+          break;
+
+        case "AttackTown":
+  
+          var tx = this.e.closestObject( "Town", this.p.x );
+          if( tx != this.target_x ) // do we have a target?
+          {
+            this.target_x = tx;
+            this.tgtCannonAngle = 0;
+            this.canonAtTarget = false;
+          }
+          else if( this.atTargetX( 50 ) ) // within striking distance?
+          {
+            if( this.canonAtTarget )
+            {
+              this.fireWeapon = true;
+              this.target_x = undefined;
+              this.smTimer += 1000; // additional reload time
+            }
+            this.spd = 0; // stop. Make sure we're facing target.
+            this.bodyAngle = ( this.p.x < this.target_x  ) ? 0 : c.PI;
+          }
+          else // proceed to target.
+          {
+            this.spd = c.MAX_TANK_VEL;
+            this.bodyAngle = ( this.p.x < this.target_x ) ? 0 : c.PI;
+          }
+          // go to "EngageHelo" if we get shot.
+          break;
+
+        case "EngageHelo":
+
+          this.target_x = this.e.chopper.p.x;
+
+          // aim at helo
+          this.bodyAngle = ( this.p.x < this.target_x  ) ? 0 : c.PI;
+          this.tgtCannonAngle = Math.atan( this.e.chopper.p.y / Math.abs( this.target_x - this.p.x ) );
+
+          this.canonAtTarget = false;
+
+          if( this.atTargetX( 40 ) )
+          {
+            if( this.tgtCannonAngle > maxCannonAngle )
+            {
+              this.spd = c.MAX_TANK_VEL;
+              this.bodyAngle = randInt( 0, 1 ) ? 0 : c.PI; // randomly move right or left.
+            }
+            else
+            {
+              this.spd = 0;
+              this.fireWeapon = true;
+              this.smTimer += 1000; // additional reload time
+            }
+          }
+          else if( !this.atTargetX( 200 ) )
+            this.state = "Select"; // chopper is far away.
+          else // go towards helo
+          {
+            this.spd = c.MAX_TANK_VEL;
+            this.bodyAngle = ( this.p.x < this.target_x ) ? 0 : c.PI;
+          }
+
+          break;
+
+        default:
+          console.log( "Tank: Bad State", this.state );
+          return false;
       }
     }
+    
+    // adjust canon and tank position.
+    this.p.x += this.spd * deltaMs / 1000 * Math.cos( this.bodyAngle );
+    if( !this.canonAtTarget )
+    {
+      if( this.cannonAngle < this.tgtCannonAngle )
+        this.cannonAngle += deltaMs / 1000;
+      else if( this.cannonAngle > this.tgtCannonAngle )
+        this.cannonAngle -= deltaMs / 1000;
+      if( this.cannonAngle < 0 )
+      {
+        this.cannonAngle = 0;
+        this.canonAtTarget = true;
+      }
+      else if( this.cannonAngle > maxCannonAngle ) // max angle
+      {
+        this.cannonAngle = maxCannonAngle;
+        this.canonAtTarget = true;
+      }
+      else if( Math.abs( this.cannonAngle - this.tgtCannonAngle ) < .02 )
+      {
+        this.cannonAngle = this.tgtCannonAngle;
+        this.canonAtTarget = true;
+      }
+    }
+
+    if( this.fireWeapon )
+    {
+      this.fireWeapon = false;
+      if( dirFromAngle( this.bodyAngle ) == c.DIR_RIGHT )
+      {
+        const targAngle = this.cannonAngle;
+        this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                          p: new Missile( this.e, "MissileA",
+                                          new Point( this.p.x + 5.5 * Math.cos( this.cannonAngle ),
+                                                    ( this.p.y + 3.5 ) + 5 * Math.sin( this.cannonAngle ), 1 ),
+                                          targAngle, undefined, this ) } );
+      }
+      else
+      {
+        const targAngle = c.PI - this.cannonAngle;
+        this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+                          p: new Missile( this.e, "MissileA",
+                                          new Point( this.p.x - 5.5 * Math.cos( this.cannonAngle ),
+                                                    ( this.p.y + 3.5 ) + 5 * Math.sin( this.cannonAngle ), 1 ),
+                                          targAngle, undefined, this ) } );
+      }
+    }
+
+
     return true;
+  }
+
+  atTargetX( distance=2 )
+  {
+    return Math.abs( this.p.x - this.target_x ) < distance ? true : false;
   }
 
   drawWheel( x, y, radius, angle )
@@ -148,17 +316,15 @@ export class Tank
     if( dirFromAngle( this.bodyAngle ) == c.DIR_LEFT )
     {
       var a2p = this.bodyAngle - .85; // angle from p to pivot of cannon
-      this.e.ctx.translate( p.x + this.d2p * Math.cos( a2p ),
-                            p.y - this.d2p * Math.sin( a2p ) );
+      this.e.ctx.translate( p.x + this.d2p * Math.cos( a2p ), p.y - this.d2p * Math.sin( a2p ) );
       this.e.ctx.scale( 1, -1 );
       theta = this.bodyAngle - this.cannonAngle;
     }
     else
     {
       var a2p = .85 + this.bodyAngle; // angle from p to pivot of cannon
-      this.e.ctx.translate( p.x + this.d2p * Math.cos( a2p ),
-                            p.y - this.d2p * Math.sin( a2p ) );
-      theta = -( this.bodyAngle + this.cannonAngle);
+      this.e.ctx.translate( p.x + this.d2p * Math.cos( a2p ), p.y - this.d2p * Math.sin( a2p ) );
+      theta = -( this.bodyAngle + this.cannonAngle );
     }
     this.e.ctx.rotate( theta );
     this.e.ctx.drawImage( this.ci, 0, -10, this.cw, this.ch );
@@ -166,13 +332,9 @@ export class Tank
 
     this.e.ctx.translate( p.x, p.y );
     var theta = this.bodyAngle;
-    var trackPos = this.p.x;
 
     if( dirFromAngle( this.bodyAngle ) == c.DIR_LEFT )
-    {
-      trackPos *= -1;
       this.e.ctx.scale( 1, -1 );
-    }
     else
       theta = -theta;
     this.e.ctx.rotate( theta );
@@ -204,6 +366,11 @@ export class Tank
 
     if( this.showSICount > 0 )
       showSI( this.e, p, this.si / this.max_si );
+    if( this.e.debugMode )
+    {
+      this.e.ctx.font = "10px Arial";
+      this.e.ctx.fillText( "State:" + this.state + " X:" + this.target_x, p.x - this.w / 4, p.y - 20 );
+    }
   }
 
 }

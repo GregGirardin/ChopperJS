@@ -9,11 +9,11 @@ export class Plane
 
   static planes = // properties are planeTypes
   {
-    Bomber1 : {
+    Bomber1 : { // faster, fewer bombs
               image : undefined,
               src : "images/vehicles/Bomber1.png",
               si : c.SI_BOMBER1,
-              bombs : 2,
+              bombs : 1,
               imgFactor : .8,
               points : c.POINTS_BOMBER,
               spd : c.MAX_BOMBER1_VEL,
@@ -23,7 +23,7 @@ export class Plane
               colRect : [ -7, 0, 7, -2 ],
               },
 
-    Bomber2 : {
+    Bomber2 : { // slower, more bombs
               image : undefined,
               src : "images/vehicles/Bomber2.gif",
               si : c.SI_BOMBER2,
@@ -51,7 +51,7 @@ export class Plane
               colRect : [ -3, 1, 3, -1 ],
               },
 
-    Fighter2 : {
+    Fighter2 : { // quicker, faster.
               image : undefined,
               src : "images/vehicles/Jet4.png",
               si : c.SI_FIGHTER2,
@@ -81,6 +81,7 @@ export class Plane
     this.maxBodyAngle = p.maxBodyAngle;
     this.adjTimeMs = p.adjTimeMs;
     this.bombs = p.bombs;
+    this.maxBombs = p.bombs;
     this.colRect = p.colRect;
     this.spd = p.spd;
     this.tgtspd = p.spd;
@@ -124,6 +125,9 @@ export class Plane
       return false;
     }
 
+    if( this.showSICount > 0 )
+      this.showSICount -= deltaMs;
+
     // Adjust body angle to approach target body angle.
     const tgtRel = getRelTheta( this.tgtBodyAngle );
     const actRel = getRelTheta( this.bodyAngle );
@@ -135,7 +139,7 @@ export class Plane
       this.bodyAngle = setRelTheta( this.bodyAngle, actRel < tgtRel ? actRel + .003 : actRel - .003 );
 
     // plane specific update
-    var value = true;
+    var value = false;
     switch( this.oType )
     {
       case "Bomber1":
@@ -158,7 +162,10 @@ export class Plane
   }
 
   /* /////////////////////////////////////////////////
-    Bomber state machine
+    Bomber state machine.
+
+    For now we don't need states. Just decend, bomb city, ascend, fly to edge of WORLD.
+
     APPROACHING
       Choose target.
       Go towards target.
@@ -173,21 +180,19 @@ export class Plane
   ///////////////////////////////////////////////// */
   bomberUpdate( deltaMs )
   {
-    if( !this.state )
-      this.state = "APPROACHING";
-
-    if( this.p.x < c.MIN_WORLD_X - 50 )  // To the left of the theater, turn around.
+    if( this.p.x < c.MIN_WORLD_X - 100 )  // To the left of the theater, turn around.
     {
-      this.target_y = randInt( 75, 100 );
+      this.target_y = randInt( 15, 30 );
       this.tgtBodyAngle = 0; // go right
       this.bodyAngle = this.tgtBodyAngle;
+      this.bombs = this.maxBombs;
     }
-    else if( this.p.x > c.MAX_WORLD_X + 50 )
+    else if( this.p.x > c.MAX_WORLD_X + 100 ) // to the right.
     {
-      this.target_y = randInt( 10, 30 );
+      this.target_y = randInt( 15, 30 );
       this.tgtBodyAngle = c.PI; // go left
       this.bodyAngle = this.tgtBodyAngle;
-      this.bombs = 1;
+      this.bombs = this.maxBombs;
     }
     else
     {
@@ -209,13 +214,19 @@ export class Plane
         {
           let index;
           for( index = 0;index < this.e.objects.length;index++ )
-            if( this.e.objects[ index ].oType == "CityBuilding" )
+            if( this.e.objects[ index ].oType == "Building" )
               if( Math.abs( this.e.objects[ index ].p.x - this.p.x ) < 10 )
               {
                 this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
                                    p: new Missile( this.e, "Bomb", new Point( this.p.x, this.p.y, 1 ), this.bodyAngle, this.v, this ) } );
                 this.bombs -= 1;
-                this.nextAngleAdjustMs = 2500;
+                if( this.bombs == 0 )
+                {
+                  this.target_y = randInt( 40, 80 );
+                  this.nextAngleAdjustMs = 500;
+                }
+                else
+                  this.nextAngleAdjustMs = randInt( 1000, 3000 );
                 break;
               }
         }
@@ -294,8 +305,8 @@ export class Plane
           if( Math.abs( this.e.chopper.p.x - this.p.x ) < 25 )
           {
             this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
-                              p: new Missile( this.e, "MissileA", new Point( this.p.x, this.p.y, 1 ),
-                                              this.bodyAngle, this.v, this ) } );
+                               p: new Missile( this.e, "MissileA", new Point( this.p.x, this.p.y, 1 ),
+                                               this.bodyAngle, this.v, this ) } );
             this.nextMissile = randInt( 500, 2000 );
             this.tgtspd = Plane.planes[ this.oType ].spd * .8; // slow down to attack
           }

@@ -180,10 +180,15 @@ export class Rock
 
   constructor( e, x, y, z )
   {
-    this.e = e; // game engine
+    this.e = e;
     this.oType = "Rock";
     this.p = new Point( x, y, z );
-    this.imgFactor = randInt( 2, 5 ) / 2;
+    if( z > 200 )
+      this.imgFactor = .25;
+    else if( z > 50 )
+      this.imgFactor = .5;
+    else
+      this.imgFactor = 1;
 
     if( !Rock.img )
     {
@@ -282,11 +287,11 @@ export class Base
   static img;
   static BASE_RESUP_INTERVAL = 10 * 1000; // doesn't really need to be in constants.
 
-  constructor( e, x, y, z, label=undefined )
+  constructor( e, x, label=undefined )
   {
     this.e = e;
-    this.oType = "Base";
-    this.p = new Point( x, y, z );
+    this.oType = "Homebase";
+    this.p = new Point( x, 0, 2 );
     this.label = label;
     this.imgFactor = .6;
     this.colRect = [ -12, 1, 12, 0 ];
@@ -349,118 +354,7 @@ export class Base
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
-class CityBuilding
-{
-  static img;
-
-  static imgInfo =
-  [
-    // Row 1
-    [   32,  13,  55, 265 ],  // x,y,w,h of buildings in this sprite sheet.
-    [  116,   7, 135, 296 ],
-    [  259,  10,  77, 126 ],
-    [  343,   2,  45, 196 ],
-    [  399,  15,  52, 504 ],
-    [  462,   6, 107, 279 ],
-    [  585,  11,  54, 249 ],
-    [  640,  11, 120, 193 ],
-    [  882,   6,  51, 328 ],
-  
-    // Row 2
-    [   20, 291,  77, 396 ],
-    [  137, 334,  96, 393 ],
-    [  284, 268, 100, 427 ],
-    [  556, 289, 86,  397 ],
-  ];
-
-  static numBuildings = CityBuilding.imgInfo.length;
-
-  constructor( e, xPos, buildIx, label=undefined )
-  {
-    this.e = e;
-    this.oType = "CityBuilding";
-    this.p = new Point( xPos, 0, 2 );
-    this.label = label;
-    this.buildIx = buildIx;
-    this.si = c.SI_BUILDING;
-    this.max_si = c.SI_BUILDING;
-    this.imgFactor = 1.5;
-
-    this.ix = CityBuilding.imgInfo[ this.buildIx ][ 0 ];
-    this.iy = CityBuilding.imgInfo[ this.buildIx ][ 1 ];
-    this.iw = CityBuilding.imgInfo[ this.buildIx ][ 2 ];
-    this.ih = CityBuilding.imgInfo[ this.buildIx ][ 3 ];
-    this.w = this.iw * this.imgFactor;
-    this.h = this.ih * this.imgFactor;
-
-    this.colRect = [ -this.w / 80, this.h / 17, this.w / 80, 0 ];
-
-    if( !CityBuilding.img )
-    {
-      CityBuilding.img = new Image();
-      CityBuilding.img.src = "./images/backgrounds/miscCity.gif";
-    }
-  }
-
-  processMessage( e, msg, param=undefined )
-  {
-    switch( msg )
-    {
-      case c.MSG_COLLISION_DET:
-
-        if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
-        {
-          this.showSICount = c.SHOW_SI_TIME;
-          this.si -= param.damage;
-          if( this.si < 0 )
-            this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
-                               p: new Explosion( this.e, this.p, "Explosion1" ) } );
-        }
-    }
-  }
-
-  update( deltaMs )
-  {
-    if( this.si < 0.0 )
-    {
-      this.e.qMessage( { m: c.MSG_BUILDING_DESTROYED, p : undefined } );
-      return false;
-    }
-   
-    if( this.showSICount > 0 )
-      this.showSICount -= deltaMs;
-   
-    return true
-  }
-
-  draw( p )
-  {
-    this.e.ctx.drawImage( CityBuilding.img,
-                          this.ix, this.iy, this.iw, this.ih, // source rectangle
-                          p.x - this.w / 2, p.y - this.h,
-                          this.w, this.h );
-
-    if( this.showSICount > 0 )
-      showSI( this.e, p, this.si / this.max_si );
-  }
-}
-
-///////////////////////////////////////////////
-///////////////////////////////////////////////
-export function buildCity( e, x, bCount, label=undefined )
-{
-  let buildIx, b, building;
-
-  for( b = 0;b < bCount;b++ )
-  {
-    buildIx = randInt( 0, CityBuilding.numBuildings - 1 );
-    e.objects.push( new CityBuilding( e, x, buildIx, label=label ) );
-    x += randInt( 5, 8 );
-  }
-}
-///////////////////////////////////////////////
-///////////////////////////////////////////////
-class EBuilding // from miscBuildings.gif
+class Building // from miscBuildings.gif
 {
   static imgInfo =
   [
@@ -500,34 +394,34 @@ class EBuilding // from miscBuildings.gif
   ];
   
   static img;
-  static numBuildings = EBuilding.imgInfo.length;
+  static numBuildings = Building.imgInfo.length;
 
-  constructor( e, xPos, buildIx, label=undefined )
+  constructor( e, type, xPos, buildIx, label=undefined )
   {
     this.e = e;
-    this.oType = "EnemyBuilding";
+    this.oType = type;
     this.p = new Point( xPos, 0, 3 );
     this.label = label;
     this.buildIx = buildIx;
-    this.si = c.SI_E_BUILDING;
+    this.si = c.SI_BUILDING;
     this.max_si = this.si;
     this.points = c.POINTS_E_BUILDING;
     this.showSICount = 0;
-    this.imgFactor = 2.0;
+    this.imgFactor = 1.5;
 
-    this.ix = EBuilding.imgInfo[ this.buildIx ][ 0 ];
-    this.iy = EBuilding.imgInfo[ this.buildIx ][ 1 ];
-    this.iw = EBuilding.imgInfo[ this.buildIx ][ 2 ];
-    this.ih = EBuilding.imgInfo[ this.buildIx ][ 3 ];
+    this.ix = Building.imgInfo[ this.buildIx ][ 0 ];
+    this.iy = Building.imgInfo[ this.buildIx ][ 1 ];
+    this.iw = Building.imgInfo[ this.buildIx ][ 2 ];
+    this.ih = Building.imgInfo[ this.buildIx ][ 3 ];
     this.w = this.iw * this.imgFactor;
     this.h = this.ih * this.imgFactor;
   
     this.colRect = [ -this.w / 50, this.h / 17, this.w / 50, 0 ];
 
-    if( !EBuilding.img )
+    if( !Building.img )
     {
-      EBuilding.img = new Image();
-      EBuilding.img.src = "./images/backgrounds/miscBuildings.gif";
+      Building.img = new Image();
+      Building.img.src = "./images/backgrounds/miscBuildings.gif";
     }
   }
 
@@ -541,9 +435,9 @@ class EBuilding // from miscBuildings.gif
         {
           this.showSICount = c.SHOW_SI_TIME;
           this.si -= param.damage;
-          if( this.si < 0 )
-            this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
-                               p: new Explosion( this.e, this.p, "Explosion1" ) } );
+          // if( this.si < 0 )
+          //   this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+          //                      p: new Explosion( this.e, this.p, "Explosion1" ) } );
         }
     }
   }
@@ -552,7 +446,8 @@ class EBuilding // from miscBuildings.gif
   {
     if( this.si < 0.0 )
     {
-      this.e.qMessage( { m: c.MSG_E_BUILDING_DESTROYED, p : this } );
+      if( this.oType == "Base" )
+        this.e.qMessage( { m: c.MSG_E_BUILDING_DESTROYED, p : this } );
       return false;
     }
 
@@ -564,7 +459,120 @@ class EBuilding // from miscBuildings.gif
 
   draw( p )
   {
-    this.e.ctx.drawImage( EBuilding.img,
+    this.e.ctx.drawImage( Building.img,
+                          this.ix, this.iy, this.iw, this.ih, // source rectangle
+                          p.x - this.w / 2, p.y - this.h, // x, y
+                          this.w, this.h ); // w, h
+    if( this.showSICount > 0 )
+      showSI( this.e, p, this.si / this.max_si );
+  }
+}
+
+///////////////////////////////////////////////
+// builds in -X direction
+///////////////////////////////////////////////
+export function buildTown( e, type, x, maxX, bCount, label=undefined )
+{
+  var b, buildIx;
+
+  for( b = 0;b < bCount;b++ )
+  {
+    buildIx = randInt( 0, Building.numBuildings - 1 );
+    e.objects.push( new Building( e, type, x, buildIx ) );
+    x += randInt( 3, 7 );
+    if( x > maxX )
+      break;
+  }
+}
+
+///////////////////////////////////////////////
+// Use these for Military Base
+///////////////////////////////////////////////
+class MilBuilding // from MilitaryBuildings.gif
+{
+  static imgInfo =
+  [
+    // This gif is a sprite sheet. Need to cut out individual images.
+    // First row
+    [  26, 88, 422, 153 ],  // x,y,w,h
+    [ 531,  1, 250, 239 ],
+
+    // Row 2
+    [   5, 348, 206, 130 ],
+    [ 236, 298, 617, 180 ],
+
+    // Row 3
+    [  33, 572, 542, 279 ],
+    [ 661, 509, 113, 345 ],
+  ];
+  
+  static img;
+  static numBuildings = MilBuilding.imgInfo.length;
+
+  constructor( e, type, xPos, buildIx, label=undefined )
+  {
+    this.e = e;
+    this.oType = type;
+    this.p = new Point( xPos, 0, 3 );
+    this.label = label;
+    this.buildIx = buildIx;
+    this.si = c.SI_BUILDING;
+    this.max_si = this.si;
+    this.points = c.POINTS_E_BUILDING;
+    this.showSICount = 0;
+    this.imgFactor = .75;
+
+    this.ix = MilBuilding.imgInfo[ this.buildIx ][ 0 ];
+    this.iy = MilBuilding.imgInfo[ this.buildIx ][ 1 ];
+    this.iw = MilBuilding.imgInfo[ this.buildIx ][ 2 ];
+    this.ih = MilBuilding.imgInfo[ this.buildIx ][ 3 ];
+    this.w = this.iw * this.imgFactor;
+    this.h = this.ih * this.imgFactor;
+  
+    this.colRect = [ -this.w / 50, this.h / 17, this.w / 50, 0 ];
+
+    if( !MilBuilding.img )
+    {
+      MilBuilding.img = new Image();
+      MilBuilding.img.src = "./images/backgrounds/MilitaryBuildings.gif";
+    }
+  }
+
+  processMessage( e, msg, param=undefined )
+  {
+    switch( msg )
+    {
+      case c.MSG_COLLISION_DET:
+
+        if( Missile.types.includes( param.oType ) && ( param.owner.oType != this.oType ) ) // it's a missle and not ours
+        {
+          this.showSICount = c.SHOW_SI_TIME;
+          this.si -= param.damage;
+          // if( this.si < 0 )
+          //   this.e.qMessage( { m: c.MSG_CREATE_OBJECT,
+          //                      p: new Explosion( this.e, this.p, "Explosion1" ) } );
+        }
+    }
+  }
+
+  update( deltaMs )
+  {
+    if( this.si < 0.0 )
+    {
+      if( this.oType == "Base" )
+        this.e.qMessage( { m: c.MSG_E_BUILDING_DESTROYED, p : this } );
+      return false;
+    }
+
+    if( this.showSICount > 0 )
+      this.showSICount -= deltaMs;
+
+    return true;
+  }
+
+  draw( p )
+  {
+    this.e.ctx.drawImage( MilBuilding.img,
                           this.ix, this.iy, this.iw, this.ih, // source rectangle
                           p.x - this.w / 2, p.y - this.h, // x, y
                           this.w, this.h ); // w, h
@@ -575,15 +583,15 @@ class EBuilding // from miscBuildings.gif
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
-export function buildEBase( e, x, bCount, label=undefined )
+export function buildBase( e, type, x, bCount, label=undefined )
 {
-  var b, buildIx, buildObj;
+  var b, buildIx;
 
   for( b = 0;b < bCount;b++ )
   {
-    buildIx = randInt( 0, EBuilding.numBuildings - 1 );
-    e.objects.push( new EBuilding( e, x, buildIx, label="Enemy" )  );
-    x += randInt( 7, 15 );
+    buildIx = randInt( 0, MilBuilding.numBuildings - 1 );
+    e.objects.push( new MilBuilding( e, type, x, buildIx ) );
+    x += randInt( 4, 10 );
   }
 }
 
